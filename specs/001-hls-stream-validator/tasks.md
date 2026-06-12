@@ -45,14 +45,14 @@ Single SwiftPM package at repository root (plan.md Project Structure):
 
 **Purpose**: SwiftPM package skeleton that compiles and tests green (empty)
 
-- [ ] T001 Create `Package.swift` (swift-tools-version 6.0, platform macOS 14): targets
+- [X] T001 Create `Package.swift` (swift-tools-version 6.0, platform macOS 14): targets
       `ValistreamCore` (library), `valistream` (executable, depends on core +
       `swift-argument-parser`), `ValistreamCoreTests`, `ValistreamIntegrationTests`
-- [ ] T002 Create source-tree skeleton with placeholder files per plan.md structure:
+- [X] T002 Create source-tree skeleton with placeholder files per plan.md structure:
       `Sources/ValistreamCore/{Playlist,Validation,Monitoring,Networking,Archive,Segments,Session}/`,
       `Sources/valistream/`, `Tests/ValistreamCoreTests/Fixtures/`,
       `Tests/ValistreamIntegrationTests/Support/`
-- [ ] T003 Verify toolchain: `swift build 2>&1 | xcsift` and `swift test 2>&1 | xcsift` succeed on
+- [X] T003 Verify toolchain: `swift build 2>&1 | xcsift` and `swift test 2>&1 | xcsift` succeed on
       the empty skeleton
 
 **Checkpoint**: Package compiles; CI-able baseline exists
@@ -66,42 +66,42 @@ everything every story builds on
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 [P] Write tokenizer tests (line-level fidelity, attribute-list grammar incl. quoting,
+- [X] T004 [P] Write tokenizer tests (line-level fidelity, attribute-list grammar incl. quoting,
       malformed/unknown/duplicate tags preserved as events, line numbers) in
       `Tests/ValistreamCoreTests/Playlist/M3U8TokenizerTests.swift`
-- [ ] T005 [P] Write playlist model/builder tests (master vs media auto-detection per FR-002,
+- [X] T005 [P] Write playlist model/builder tests (master vs media auto-detection per FR-002,
       attribute extraction, relative URI resolution) in
       `Tests/ValistreamCoreTests/Playlist/PlaylistBuilderTests.swift`
-- [ ] T006 Implement lossless M3U8 tokenizer in
+- [X] T006 Implement lossless M3U8 tokenizer in
       `Sources/ValistreamCore/Playlist/M3U8Tokenizer.swift` (research.md §2: token stream preserves
       raw lines, numbers, anomalies)
-- [ ] T007 Implement playlist model + builder (master/media models, declared attributes,
+- [X] T007 Implement playlist model + builder (master/media models, declared attributes,
       `SegmentRef` entries, URI resolution) in `Sources/ValistreamCore/Playlist/PlaylistModel.swift`
       and `Sources/ValistreamCore/Playlist/PlaylistBuilder.swift` (data-model.md PlaylistDescriptor,
       PlaylistRefresh fields)
-- [ ] T008 [P] Implement `Finding` types (severity, category, source, ruleId, location, context —
+- [X] T008 [P] Implement `Finding` types (severity, category, source, ruleId, location, context —
       data-model.md Finding) with encoding tests in
       `Sources/ValistreamCore/Validation/Finding.swift` and
       `Tests/ValistreamCoreTests/Validation/FindingTests.swift`
-- [ ] T009 [P] Implement `StreamFetching` protocol + `FetchResult`/`ArtifactRecord` value types
+- [X] T009 [P] Implement `StreamFetching` protocol + `FetchResult`/`ArtifactRecord` value types
       (full request/response metadata incl. redirect chain — data-model.md ArtifactRecord) in
       `Sources/ValistreamCore/Networking/StreamFetching.swift`
-- [ ] T010 Implement URLSession-backed fetcher (`URLSessionTaskMetrics` capture: remote IP/port,
+- [X] T010 Implement URLSession-backed fetcher (`URLSessionTaskMetrics` capture: remote IP/port,
       timestamps, protocol; per-hop redirect recording; URLCache disabled — research.md §3) in
       `Sources/ValistreamCore/Networking/URLSessionStreamFetcher.swift`
-- [ ] T011 [P] Implement `ScriptedStreamFetcher` test stub + scenario timeline support (VOD map,
+- [X] T011 [P] Implement `ScriptedStreamFetcher` test stub + scenario timeline support (VOD map,
       live sliding-window script advanced by test clock, error/redirect/stall/regression steps —
       research.md §8) in `Tests/ValistreamIntegrationTests/Support/ScriptedStreamFetcher.swift`
-- [ ] T012 [P] Adopt injectable `Clock` (generic over `Clock<Duration>`) convention in core +
+- [X] T012 [P] Adopt injectable `Clock` (generic over `Clock<Duration>`) convention in core +
       `ManualClock` test support in `Tests/ValistreamIntegrationTests/Support/ManualClock.swift`
       (research.md §9)
-- [ ] T013 [P] Write session state-machine tests (transitions per data-model.md lifecycle incl.
+- [X] T013 [P] Write session state-machine tests (transitions per data-model.md lifecycle incl.
       aborted/failed paths, empty-selection short-circuit) in
       `Tests/ValistreamCoreTests/Session/ValidationSessionStateTests.swift`
-- [ ] T014 Implement `ValidationSession` actor skeleton (state machine, config, event
+- [X] T014 Implement `ValidationSession` actor skeleton (state machine, config, event
       `AsyncStream` for status/findings — research.md §9) in
       `Sources/ValistreamCore/Session/ValidationSession.swift`
-- [ ] T015 Implement rule engine: `ValidationRule` protocol, rule registry, evaluation context
+- [X] T015 Implement rule engine: `ValidationRule` protocol, rule registry, evaluation context
       (playlist + token stream + session info), rule metadata (id, source, default severity) in
       `Sources/ValistreamCore/Validation/RuleEngine.swift` — shared by US1/US2/US4, foundational
       per constitution Principle IV
@@ -122,51 +122,51 @@ scenarios 1–2)
 
 ### Tests for User Story 1 (write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T016 [P] [US1] Build conformant fixture corpus (modeled on Apple reference streams: master
+- [X] T016 [P] [US1] Build conformant fixture corpus (modeled on Apple reference streams: master
       playlist + video/audio/subtitle/I-frame playlists, VOD + event + live forms) in
       `Tests/ValistreamCoreTests/Fixtures/conformant/` + corpus runner test asserting zero
       error/warning findings in `Tests/ValistreamCoreTests/Conformance/ConformantCorpusTests.swift`
-- [ ] T017 [P] [US1] Build seeded-violation fixtures for RFC 8216 master-playlist rules (one
+- [X] T017 [P] [US1] Build seeded-violation fixtures for RFC 8216 master-playlist rules (one
       violation family per file: missing/duplicate required tags, bad attribute values, unresolvable
       group references) in `Tests/ValistreamCoreTests/Fixtures/violations/master/` + expected-finding
       assertions (ruleId, severity, line) in
       `Tests/ValistreamCoreTests/Conformance/MasterViolationTests.swift`
-- [ ] T018 [P] [US1] Build seeded-violation fixtures for RFC 8216 media-playlist rules (target
+- [X] T018 [P] [US1] Build seeded-violation fixtures for RFC 8216 media-playlist rules (target
       duration violations, sequence tags, endlist anomalies, segment duration overruns) in
       `Tests/ValistreamCoreTests/Fixtures/violations/media/` + assertions in
       `Tests/ValistreamCoreTests/Conformance/MediaViolationTests.swift`
-- [ ] T019 [P] [US1] Build seeded-violation fixtures for Apple authoring rules (ladder gaps/dupes,
+- [X] T019 [P] [US1] Build seeded-violation fixtures for Apple authoring rules (ladder gaps/dupes,
       missing CODECS/RESOLUTION/AVERAGE-BANDWIDTH, missing I-frame playlists, inconsistent rendition
       groups, missing EXT-X-INDEPENDENT-SEGMENTS — research.md §5 list) in
       `Tests/ValistreamCoreTests/Fixtures/violations/authoring/` + assertions in
       `Tests/ValistreamCoreTests/Conformance/AuthoringViolationTests.swift`
-- [ ] T020 [P] [US1] Write integration tests: one-shot VOD session over `ScriptedStreamFetcher` —
+- [X] T020 [P] [US1] Write integration tests: one-shot VOD session over `ScriptedStreamFetcher` —
       happy path (classification `vod`, all media fetched+validated, completion summary), LL-HLS
       tags → info finding (FR-017), encrypted stream → info finding (FR-013) in
       `Tests/ValistreamIntegrationTests/OneShotSessionTests.swift`
-- [ ] T021 [P] [US1] Write integration tests: delivery failures — unreachable URL, non-playlist
+- [X] T021 [P] [US1] Write integration tests: delivery failures — unreachable URL, non-playlist
       body, HTTP error status, redirect chain recorded, direct media-playlist URL standalone
       validation (FR-002/FR-014, US1 acceptance 3–4) in
       `Tests/ValistreamIntegrationTests/DeliveryFailureTests.swift`
 
 ### Implementation for User Story 1
 
-- [ ] T022 [P] [US1] Implement RFC 8216 master-playlist rule set in
+- [X] T022 [P] [US1] Implement RFC 8216 master-playlist rule set in
       `Sources/ValistreamCore/Validation/Rules/RFC8216MasterRules.swift`
-- [ ] T023 [P] [US1] Implement RFC 8216 media-playlist rule set in
+- [X] T023 [P] [US1] Implement RFC 8216 media-playlist rule set in
       `Sources/ValistreamCore/Validation/Rules/RFC8216MediaRules.swift`
-- [ ] T024 [P] [US1] Implement Apple authoring playlist-observable rule set (research.md §5) in
+- [X] T024 [P] [US1] Implement Apple authoring playlist-observable rule set (research.md §5) in
       `Sources/ValistreamCore/Validation/Rules/AppleAuthoringRules.swift`
-- [ ] T025 [US1] Implement stream classification (vod/event/live per FR-005) + LL-HLS and
+- [X] T025 [US1] Implement stream classification (vod/event/live per FR-005) + LL-HLS and
       encryption detection info findings (FR-013/FR-017) in
       `Sources/ValistreamCore/Validation/StreamClassifier.swift`
-- [ ] T026 [US1] Implement media-playlist enumeration + fetch with delivery-finding conversion
+- [X] T026 [US1] Implement media-playlist enumeration + fetch with delivery-finding conversion
       (FR-004/FR-014: timeouts/HTTP errors/non-playlist bodies → `delivery` findings, session
       continues) in `Sources/ValistreamCore/Session/PlaylistLoader.swift`
-- [ ] T027 [US1] Wire one-shot flow into `ValidationSession` (fetchingMaster → validatingInitial →
+- [X] T027 [US1] Wire one-shot flow into `ValidationSession` (fetchingMaster → validatingInitial →
       finishing → completed; findings emitted on event stream) in
       `Sources/ValistreamCore/Session/ValidationSession.swift`
-- [ ] T028 [US1] Implement CLI v1 in `Sources/valistream/ValistreamCommand.swift` +
+- [X] T028 [US1] Implement CLI v1 in `Sources/valistream/ValistreamCommand.swift` +
       `Sources/valistream/StatusRenderer.swift`: argument parsing (URL; `--output-dir` accepted now
       with help text noting the archive arrives when US3 lands), live status + findings rendering
       (FR-009), exit codes 0/1/2/3 per

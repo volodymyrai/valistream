@@ -17,11 +17,12 @@ The library + tests live in the SwiftPM package (`Valistream/ValistreamCore/`); 
 target built through the workspace (`Valistream/Valistream.xcworkspace`).
 
 ```bash
-# Library + tests
-( cd Valistream/Package && swift test 2>&1 | xcsift )   # unit (corpus) + integration (stubs)
+# Library + unit/conformance tests (SwiftPM package)
+( cd Valistream/ValistreamCore && swift test 2>&1 | xcsift )   # unit + conformance (corpus)
 
-# CLI tool (Xcode workspace, scheme "Valistream")
+# CLI tool + integration tests (Xcode workspace, scheme "Valistream")
 xcodebuild -workspace Valistream/Valistream.xcworkspace -scheme Valistream build 2>&1 | xcsift
+xcodebuild -workspace Valistream/Valistream.xcworkspace -scheme Valistream test 2>&1 | xcsift  # + integration (stubs)
 
 # Run the built CLI (resolve the product path once, then reuse it)
 VALISTREAM=$(find ~/Library/Developer/Xcode/DerivedData -type f -name Valistream \
@@ -106,4 +107,4 @@ scenario 3, FR-015).
 - [ ] Scenario 4 emits valid JSON Lines and a meaningful exit code with no prompt
 - [ ] Scenario 5 flags only segments beyond tolerance
 - [ ] Scenario 6 leaves a complete, readable session archive after Ctrl-C
-- [ ] `swift test` green: conformance corpus + integration scenarios
+- [ ] `swift test` (package) green on the conformance corpus; `Valistream` scheme test plan green on integration scenarios

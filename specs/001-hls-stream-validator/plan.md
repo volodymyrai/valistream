@@ -28,9 +28,11 @@ only external dependency)
 **Storage**: Local filesystem — one folder per session (artifacts verbatim + JSON metadata sidecars,
 JSON + Markdown session reports). No database.
 
-**Testing**: Swift Testing (`swift test`); unit tests against fixture playlist corpus; integration
-tests drive the session engine through a scripted `StreamFetching` stub simulating VOD/live/faulty
-streams in-process (no sockets); test development follows repository `unit-testing.md` (mandatory)
+**Testing**: Swift Testing; unit/conformance tests against a fixture playlist corpus run via
+`swift test` in the package; integration tests drive the session engine through a scripted
+`StreamFetching` stub simulating VOD/live/faulty streams in-process (no sockets) and live in the
+`ValistreamIntegrationTests` target of the CLI Xcode project (run via the `Valistream` scheme /
+`Valistream.xctestplan`); test development follows repository `unit-testing.md` (mandatory)
 
 **Target Platform**: macOS 14+ (CLI). Linux portability kept plausible (no AppKit; FoundationNetworking
 caveats documented in research.md) but not a v1 requirement.
@@ -89,10 +91,15 @@ The CLI was split out of the SwiftPM package into an Xcode project under a share
 ```text
 Valistream/
 ├── Valistream.xcworkspace              # ties the project + package together
-├── Valistream/
-│   └── Valistream.xcodeproj            # CLI tool target "Valistream"
-│       └── Valistream/                 # CLI sources: argument parsing, status rendering, exit codes
-└── Package/                            # SwiftPM package (library + tests)
+├── TestPlans/                          # shared .xctestplan files (referenced by both schemes)
+│   ├── ValistreamCore.xctestplan       # unit only      — package scheme "ValistreamCore"
+│   └── Valistream.xctestplan           # unit + integ.   — CLI scheme "Valistream"
+├── Valistream/                         # CLI Xcode project
+│   ├── Valistream.xcodeproj            # targets: "Valistream" (tool) + "ValistreamIntegrationTests"
+│   ├── Valistream/                     # CLI sources: argument parsing, status rendering, exit codes
+│   └── ValistreamIntegrationTests/     # end-to-end: scripted StreamFetching stub timelines
+│       └── Support/                    # ScriptedStreamFetcher + ManualClock test stubs
+└── ValistreamCore/                     # SwiftPM package (library + unit tests)
     ├── Package.swift
     ├── Sources/
     │   └── ValistreamCore/             # library target: all domain logic, UI-free
@@ -104,8 +111,7 @@ Valistream/
     │       ├── Segments/               # opt-in segment download + bandwidth audit
     │       └── Session/                # ValidationSession orchestrator (actor), session report builder
     └── Tests/
-        ├── ValistreamCoreTests/        # Swift Testing; unit tests per module (+ Fixtures/ corpus)
-        └── ValistreamIntegrationTests/ # end-to-end: scripted StreamFetching stub timelines
+        └── ValistreamCoreTests/        # Swift Testing; unit tests per module (+ Fixtures/ corpus)
 ```
 
 **Structure Decision**: One SwiftPM package exposing the `ValistreamCore` library, plus a thin CLI

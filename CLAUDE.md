@@ -22,12 +22,19 @@ Implementation rules (binding):
 ## Additional implementation rules (binding)
 
 **Project layout (after Xcode restructure):**
-- SwiftPM package -> `Valistream/ValistreamCore/` -- builds the `ValistreamCore` library + test targets only
+- SwiftPM package -> `Valistream/ValistreamCore/` -- builds the `ValistreamCore` library +
+  `ValistreamCoreTests` (unit/conformance) only
 - CLI tool -> `Valistream/Valistream/Valistream.xcodeproj` target **Valistream** (sources in
   `Valistream/Valistream/Valistream/`); depends on `ValistreamCore` + `ArgumentParser` via SwiftPM
+- Integration tests -> target **ValistreamIntegrationTests** (unit-test bundle in the CLI xcodeproj),
+  sources in `Valistream/Valistream/ValistreamIntegrationTests/` (stubs in `Support/`:
+  `ScriptedStreamFetcher`, `ManualClock`)
+- Test plans -> `Valistream/TestPlans/`: `ValistreamCore.xctestplan` (unit only; package scheme
+  `ValistreamCore`) and `Valistream.xctestplan` (unit + integration; CLI scheme `Valistream`)
 - Workspace -> `Valistream/Valistream.xcworkspace` ties the project and package together
-- Build/run the CLI through the workspace (**xcode-tools** `BuildProject`, tab `windowtab1`);
-  `swift build`/`swift test` inside `Package/` covers the library + tests only
+- Build/run the CLI through the workspace (**xcode-tools** `BuildProject`);
+  `swift test` inside `Valistream/ValistreamCore/` covers the library + unit tests only — integration
+  tests run via the Xcode `Valistream` scheme / `Valistream.xctestplan`
 
 Do before impl start:
 1. Activate project in **serena**

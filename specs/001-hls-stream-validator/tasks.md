@@ -36,14 +36,22 @@ US2 = live monitoring (P2), US3 = session archive (P3), US4 = segment bandwidth 
 ## Path Conventions
 
 SwiftPM package at `Valistream/ValistreamCore/` (plan.md Project Structure): `Sources/ValistreamCore/…`
-(library), `Tests/ValistreamCoreTests/…` (unit/conformance), `Tests/ValistreamIntegrationTests/…`
-(integration) — all relative to `Valistream/ValistreamCore/`.
+(library) and `Tests/ValistreamCoreTests/…` (unit/conformance) — relative to `Valistream/ValistreamCore/`.
+Task bodies referencing `Tests/ValistreamIntegrationTests/…` map to the CLI project (see test note).
 
 > **Restructure note (post-MVP):** the `valistream` CLI executable was moved out of the package
 > into the Xcode tool target `Valistream` (`Valistream/Valistream/Valistream.xcodeproj`). Its
 > sources live in `Valistream/Valistream/Valistream/` and it links `ValistreamCore` +
 > `ArgumentParser` via SwiftPM. Tasks below referencing `Sources/valistream/…` (e.g. T028, T040)
 > now map to that folder; the package no longer builds an executable.
+>
+> **Test restructure:** `ValistreamIntegrationTests` is now a unit-test-bundle target in the CLI
+> Xcode project; its sources (incl. `Support/ScriptedStreamFetcher.swift`,
+> `Support/ManualClock.swift`) live in `Valistream/Valistream/ValistreamIntegrationTests/`. Task
+> bodies referencing `Tests/ValistreamIntegrationTests/…` map there. Two shared test plans in
+> `Valistream/TestPlans/`: `ValistreamCore.xctestplan` (unit only; package scheme `ValistreamCore`)
+> and `Valistream.xctestplan` (unit + integration; CLI scheme `Valistream`). `swift test` in the
+> package runs unit/conformance only — integration runs via the Xcode `Valistream` scheme.
 
 ---
 

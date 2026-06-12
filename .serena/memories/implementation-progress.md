@@ -1,16 +1,24 @@
 # Valistream implementation progress
 
-See `mem:implementation-setup` for layout, build/test commands (xcode-tools tab `windowtab1`), serena-LSP-unavailable caveat.
+See `mem:implementation-setup` for layout, build/test commands (xcode-tools), test plans/schemes, serena-LSP-unavailable caveat.
 
-## Restructure (June 2026) — DONE
+## Test restructure (June 2026) — DONE
+Integration tests moved OUT of the SwiftPM package INTO the CLI Xcode project:
+- `ValistreamIntegrationTests` testTarget removed from `Package.swift` (package = `ValistreamCore` library + `ValistreamCoreTests` ONLY now — 1 test target, not 2).
+- Integration sources + test stubs moved `Package/Tests/ValistreamIntegrationTests/` -> `Valistream/Valistream/ValistreamIntegrationTests/` (incl. `Support/ScriptedStreamFetcher.swift`, `Support/ManualClock.swift`); now a unit-test-bundle target in `Valistream.xcodeproj`.
+- Added `Valistream/TestPlans/`: `ValistreamCore.xctestplan` (unit only; package scheme) + `Valistream.xctestplan` (unit + integration; CLI scheme). See `mem:implementation-setup`.
+- `swift test` in the package now runs unit/conformance only; integration runs via the Xcode `Valistream` scheme.
+- Supporting docs synced: CLAUDE.md, plan.md (structure tree + Testing line), quickstart.md, tasks.md (Path Conventions + new "Test restructure" note).
+
+## CLI restructure (June 2026) — DONE
 CLI split out of the SwiftPM package into the Xcode project:
-- `valistream` executable target + `.executable` product + `swift-argument-parser` dependency removed from `Package.swift` (package = `ValistreamCore` library + 2 test targets only).
+- `valistream` executable target + `.executable` product + `swift-argument-parser` dependency removed from `Package.swift`.
 - CLI sources moved `Package/Sources/valistream/` -> `Valistream/Valistream/Valistream/` (sync group); placeholder `main.swift` deleted (`@main` conflict).
-- `Valistream.xcodeproj` tool target now links `ValistreamCore` (local pkg) + `ArgumentParser` (remote pkg); SWIFT_VERSION 5.0->6.0.
-- BuildProject green; CLI runs (`--version` 0.1.0, `--help`, bad URL -> exit 2). Supporting docs updated: CLAUDE.md, plan.md, quickstart.md, tasks.md.
+- `Valistream.xcodeproj` tool target links `ValistreamCore` (local pkg) + `ArgumentParser` (remote pkg); SWIFT_VERSION 5.0->6.0.
+- BuildProject green; CLI runs (`--version` 0.1.0, `--help`, bad URL -> exit 2).
 
 ## Done (features)
-- **Phase 1 (T001-T003)**: 4-target package (orig), skeleton, build green.
+- **Phase 1 (T001-T003)**: package skeleton, build green.
 - **Phase 2 Foundational (T004-T015)**: tokenizer+AttributeList, playlist model+builder, Finding (Codable, matches session-report.schema.json), StreamFetching/FetchResult/ArtifactRecord, URLSessionStreamFetcher (OSAllocatedUnfairLock delegate), ScriptedStreamFetcher + ManualClock (test support), SessionState+SessionLifecycle, ValidationSession actor, RuleEngine.
 - **Phase 3 US1 MVP (T016-T028)**: RFC8216 master rules, RFC8216 media rules, AppleAuthoringRules, StreamClassifier (vod/event/live + LL-HLS/encryption info), PlaylistLoader (delivery findings), ValidationSession.run() one-shot flow, CLI (ValistreamCommand + StatusRenderer, exit codes 0/1/2/3).
 - **66 tests green** (last confirmed before restructure).
@@ -22,7 +30,7 @@ CLI split out of the SwiftPM package into the Xcode project:
 - TOOL.delivery, TOOL.low-latency, TOOL.encryption
 
 ## NOT done (remaining)
-- US2 (T029-T040): live monitoring — RefreshScheduler, ContinuityChecker, StalenessDetector, monitoring TaskGroup wiring, PlaylistSelection + interactive checklist (termios), CLI live status + SIGINT->130 + --json. NOTE T040 PlaylistChecklist + any CLI task now lives in `Valistream/Valistream/Valistream/` (Xcode target), not the package.
+- US2 (T029-T040): live monitoring — RefreshScheduler, ContinuityChecker, StalenessDetector, monitoring TaskGroup wiring, PlaylistSelection + interactive checklist (termios), CLI live status + SIGINT->130 + --json. NOTE T040 PlaylistChecklist + any CLI task now lives in `Valistream/Valistream/Valistream/` (Xcode target); new monitoring integration tests go in `Valistream/Valistream/ValistreamIntegrationTests/`.
 - US3 (T041-T050): SessionArchive, FindingsLog (JSONL), DiskSpaceWatcher, SessionReportBuilder. ValidationSession does NOT archive yet; --output-dir accepted but unused.
 - US4 (T051-T055): SegmentAuditor + wiring + CLI flags.
 - Polish (T056-T060).

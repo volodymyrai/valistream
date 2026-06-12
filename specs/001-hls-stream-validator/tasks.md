@@ -35,9 +35,15 @@ US2 = live monitoring (P2), US3 = session archive (P3), US4 = segment bandwidth 
 
 ## Path Conventions
 
-Single SwiftPM package at repository root (plan.md Project Structure):
-`Sources/ValistreamCore/…` (library), `Sources/valistream/…` (CLI executable),
-`Tests/ValistreamCoreTests/…` (unit/conformance), `Tests/ValistreamIntegrationTests/…` (integration).
+SwiftPM package at `Valistream/Package/` (plan.md Project Structure): `Sources/ValistreamCore/…`
+(library), `Tests/ValistreamCoreTests/…` (unit/conformance), `Tests/ValistreamIntegrationTests/…`
+(integration) — all relative to `Valistream/Package/`.
+
+> **Restructure note (post-MVP):** the `valistream` CLI executable was moved out of the package
+> into the Xcode tool target `Valistream` (`Valistream/Valistream/Valistream.xcodeproj`). Its
+> sources live in `Valistream/Valistream/Valistream/` and it links `ValistreamCore` +
+> `ArgumentParser` via SwiftPM. Tasks below referencing `Sources/valistream/…` (e.g. T028, T040)
+> now map to that folder; the package no longer builds an executable.
 
 ---
 

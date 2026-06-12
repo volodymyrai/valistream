@@ -21,7 +21,13 @@ Implementation rules (binding):
 
 ## Additional implementation rules (binding)
 
-**Sources folder → "Valistream"**
+**Project layout (after Xcode restructure):**
+- SwiftPM package -> `Valistream/Package/` -- builds the `ValistreamCore` library + test targets only
+- CLI tool -> `Valistream/Valistream/Valistream.xcodeproj` target **Valistream** (sources in
+  `Valistream/Valistream/Valistream/`); depends on `ValistreamCore` + `ArgumentParser` via SwiftPM
+- Workspace -> `Valistream/Valistream.xcworkspace` ties the project and package together
+- Build/run the CLI through the workspace (**xcode-tools** `BuildProject`, tab `windowtab1`);
+  `swift build`/`swift test` inside `Package/` covers the library + tests only
 
 Do before impl start:
 1. Activate project in **serena**

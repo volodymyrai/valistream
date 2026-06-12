@@ -57,7 +57,7 @@ small files (~1–2 GB/24 h); single stream per process invocation
 |-----------|------|--------|
 | I. Spec-First | Approved spec with resolved clarifications exists before this plan | ✅ spec.md complete, 7 clarifications recorded, checklist 16/16 |
 | II. Test-First | Plan provides test strategy; tasks will generate test-first tasks per story | ✅ fixture corpus + scripted-transport integration tests defined (research.md §8); tests default-on |
-| III. Simplicity | No unjustified projects/abstractions/dependencies | ✅ one package, two product targets; single external dependency (swift-argument-parser) justified; custom parser justified (core domain, line-level fidelity required) — see research.md §2, §6 |
+| III. Simplicity | No unjustified projects/abstractions/dependencies | ✅ one library package + one thin CLI tool target; single external dependency (swift-argument-parser) justified; custom parser justified (core domain, line-level fidelity required) — see research.md §2, §6 |
 | IV. Independent Increments | Story slices independently implementable/testable | ✅ P1 one-shot validation → P2 live monitoring → P3 archive → P4 segments; each lands as runnable CLI increment |
 | V. Observability & Versioning | Structured output; semver | ✅ findings are structured (JSON report schema, contracts/); CLI exit codes contract; package semver from 0.1.0 |
 
@@ -82,34 +82,38 @@ specs/001-hls-stream-validator/
 └── tasks.md             # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
 ```
 
-### Source Code (repository root)
+### Source Code
+
+The CLI was split out of the SwiftPM package into an Xcode project under a shared workspace:
 
 ```text
-Package.swift
-Sources/
-├── ValistreamCore/                  # library target: all domain logic, UI-free
-│   ├── Playlist/                    # M3U8 line-level parser + playlist model (master/media)
-│   ├── Validation/                  # rule engine; RFC8216 + AppleAuthoring rule sets; Finding model
-│   ├── Monitoring/                  # live refresh scheduler, continuity checker, staleness detection
-│   ├── Networking/                  # HTTP client wrapper, URLSessionTaskMetrics capture, redirects
-│   ├── Archive/                     # session folder layout, artifact + metadata sidecar writer,
-│   │                                #   disk-space watcher
-│   ├── Segments/                    # opt-in segment download + bandwidth audit
-│   └── Session/                     # ValidationSession orchestrator (actor), session report builder
-└── valistream/                      # executable target: CLI (argument parsing, status rendering,
-                                     #   interactive playlist checklist, exit codes)
-
-Tests/
-├── ValistreamCoreTests/             # Swift Testing; unit tests per module
-│   └── Fixtures/                    # playlist corpus: conformant + seeded-violation .m3u8 files
-└── ValistreamIntegrationTests/      # end-to-end: scripted StreamFetching stub playing scenario
-                                     #   timelines (VOD, live simulation, faulty/stalling live)
+Valistream/
+├── Valistream.xcworkspace              # ties the project + package together
+├── Valistream/
+│   └── Valistream.xcodeproj            # CLI tool target "Valistream"
+│       └── Valistream/                 # CLI sources: argument parsing, status rendering, exit codes
+└── Package/                            # SwiftPM package (library + tests)
+    ├── Package.swift
+    ├── Sources/
+    │   └── ValistreamCore/             # library target: all domain logic, UI-free
+    │       ├── Playlist/               # M3U8 line-level parser + playlist model (master/media)
+    │       ├── Validation/             # rule engine; RFC8216 + AppleAuthoring rule sets; Finding model
+    │       ├── Monitoring/             # live refresh scheduler, continuity checker, staleness detection
+    │       ├── Networking/             # HTTP client wrapper, URLSessionTaskMetrics capture, redirects
+    │       ├── Archive/                # session folder layout, artifact + metadata writer, disk watcher
+    │       ├── Segments/               # opt-in segment download + bandwidth audit
+    │       └── Session/                # ValidationSession orchestrator (actor), session report builder
+    └── Tests/
+        ├── ValistreamCoreTests/        # Swift Testing; unit tests per module (+ Fixtures/ corpus)
+        └── ValistreamIntegrationTests/ # end-to-end: scripted StreamFetching stub timelines
 ```
 
-**Structure Decision**: Single SwiftPM package. `ValistreamCore` holds every behavior the spec
+**Structure Decision**: One SwiftPM package exposing the `ValistreamCore` library, plus a thin CLI
+tool in an Xcode project, joined by a workspace. `ValistreamCore` holds every behavior the spec
 defines (parse → validate → monitor → archive → report) so it is fully testable without a terminal;
-`valistream` executable is a thin presentation/IO shell. This satisfies Principle III (no extra
-projects) and keeps a future GUI wrapper possible without core changes (Clarification #2).
+the `Valistream` CLI target is a thin presentation/IO shell that links `ValistreamCore` +
+`ArgumentParser`. This keeps the core fully reusable and a future GUI wrapper possible without core
+changes (Clarification #2).
 
 ## Implementation Guidance
 

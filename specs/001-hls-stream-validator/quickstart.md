@@ -13,21 +13,31 @@ Runnable scenarios proving the feature end-to-end. Interface details:
 
 ## Build & Test
 
+The library + tests live in the SwiftPM package (`Valistream/Package/`); the CLI is an Xcode tool
+target built through the workspace (`Valistream/Valistream.xcworkspace`).
+
 ```bash
-swift build 2>&1 | xcsift        # builds ValistreamCore + valistream CLI
-swift test 2>&1 | xcsift         # unit (fixture corpus) + integration (scripted transport stubs)
-swift run valistream --help      # contract sanity check
+# Library + tests
+( cd Valistream/Package && swift test 2>&1 | xcsift )   # unit (corpus) + integration (stubs)
+
+# CLI tool (Xcode workspace, scheme "Valistream")
+xcodebuild -workspace Valistream/Valistream.xcworkspace -scheme Valistream build 2>&1 | xcsift
+
+# Run the built CLI (resolve the product path once, then reuse it)
+VALISTREAM=$(find ~/Library/Developer/Xcode/DerivedData -type f -name Valistream \
+  -path '*/Build/Products/*' -perm +111 | head -1)
+"$VALISTREAM" --help                                    # contract sanity check
 ```
 
-Expected: build succeeds; all tests pass; help output matches the CLI contract. (`xcsift` gives
-structured build/test output; plain `swift build` / `swift test` also fine for a quick check.)
+Expected: tests pass; build succeeds; help output matches the CLI contract. The scenarios below use
+`valistream` as shorthand for the built binary (`"$VALISTREAM"`).
 
 ## Scenario 1 — One-shot VOD validation (US1)
 
 Apple's reference stream (conformant):
 
 ```bash
-swift run valistream "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8" --all
+valistream "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8" --all
 ```
 
 Expected: stream classified `vod`; master + all media playlists fetched and validated; live status
@@ -42,7 +52,7 @@ Serve a broken fixture locally (corpus file with known violations, e.g. missing
 
 ```bash
 python3 -m http.server 8000 --directory Tests/ValistreamCoreTests/Fixtures/streams/broken-vod &
-swift run valistream "http://localhost:8000/master.m3u8" --all
+valistream "http://localhost:8000/master.m3u8" --all
 ```
 
 Expected: error findings naming the violated rules with playlist + line locations; exit code `1`.
@@ -50,7 +60,7 @@ Expected: error findings naming the violated rules with playlist + line location
 ## Scenario 3 — Live monitoring with playlist selection (US2)
 
 ```bash
-swift run valistream "<live-master-url>" --limit 5m
+valistream "<live-master-url>" --limit 5m
 ```
 
 Expected: stream classified `live`; interactive checklist of discovered playlists (all
@@ -62,7 +72,7 @@ deterministically in `ValistreamIntegrationTests` via scripted in-process live-s
 ## Scenario 4 — Unattended automation (Clarification #2)
 
 ```bash
-swift run valistream "<live-master-url>" --limit 90s --non-interactive --json --quiet \
+valistream "<live-master-url>" --limit 90s --non-interactive --json --quiet \
   | tee findings.jsonl
 echo "exit: $?"
 ```
@@ -72,7 +82,7 @@ Expected: no prompt; JSON Lines findings on stdout; exit `0`/`1` usable as CI pa
 ## Scenario 5 — Segment bandwidth audit (US4)
 
 ```bash
-swift run valistream "<vod-master-url>" --segments --tolerance 10 --all
+valistream "<vod-master-url>" --segments --tolerance 10 --all
 ```
 
 Expected: every segment of every selected playlist downloaded into

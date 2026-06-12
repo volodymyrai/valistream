@@ -1,6 +1,6 @@
 //
 //  ValistreamCommand.swift
-//  valistream
+//  Valistream
 //
 //  Created by Volodymyr Akimenko on 12/06/2026.
 //

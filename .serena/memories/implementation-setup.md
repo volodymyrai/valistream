@@ -1,28 +1,29 @@
 # Valistream implementation setup
 
-SwiftPM package root: `Valistream/` (NOT repo root). Xcode has it open.
+## Layout (after Xcode restructure — June 2026)
+Workspace `Valistream/Valistream.xcworkspace` (xcode-tools tab `windowtab1`) joins two members:
 
-## Targets (Package.swift)
-- `ValistreamCore` library — all domain logic, dir `Valistream/Sources/ValistreamCore/{Playlist,Validation,Validation/Rules,Monitoring,Networking,Archive,Segments,Session}/`
-- `valistream` executable — CLI, `Valistream/Sources/valistream/`, deps: ValistreamCore + ArgumentParser (swift-argument-parser 1.5.0)
-- `ValistreamCoreTests` — `Valistream/Tests/ValistreamCoreTests/` (+ `_setup/Tags.swift`, `Fixtures/`)
-- `ValistreamIntegrationTests` — `Valistream/Tests/ValistreamIntegrationTests/Support/`
-- swift-tools 6.3, swiftLanguageModes [.v6], platforms macOS 14
+- **SwiftPM package** -> `Valistream/Package/` — builds `ValistreamCore` library + test targets ONLY (no executable).
+  - `Package/Sources/ValistreamCore/{Playlist,Validation,Validation/Rules,Monitoring,Networking,Archive,Segments,Session}/`
+  - `Package/Tests/ValistreamCoreTests/` (+ `_setup/Tags.swift`, `Fixtures/`), `Package/Tests/ValistreamIntegrationTests/Support/`
+  - swift-tools 6.3, swiftLanguageModes [.v6], platforms macOS 14. Only product: `.library(ValistreamCore)`. NO external deps now (swift-argument-parser removed from package).
+- **CLI Xcode project** -> `Valistream/Valistream/Valistream.xcodeproj`, target `Valistream` (product-type tool, SWIFT_VERSION 6.0).
+  - Sources are a FileSystemSynchronizedRootGroup at `Valistream/Valistream/Valistream/` (drop files in, no pbxproj edit needed): `ValistreamCommand.swift` (@main, AsyncParsableCommand), `StatusRenderer.swift`.
+  - Package product deps: `ValistreamCore` (LOCAL — from workspace member `Package`, XCSwiftPackageProductDependency with NO `package` key) + `ArgumentParser` (REMOTE — XCRemoteSwiftPackageReference swift-argument-parser >=1.5.0, resolved 1.8.2; listed in project packageReferences).
+  - Built binary name = `Valistream` (capital, PRODUCT_NAME=$(TARGET_NAME)). CLI/help invocation name still `valistream` (ArgumentParser commandName).
 
-## Task→path mapping
-tasks.md uses paths like `Sources/ValistreamCore/...` — these are relative to `Valistream/`, so prefix with `Valistream/`.
+## Task->path mapping (tasks.md)
+`Sources/ValistreamCore/...` -> prefix with `Valistream/Package/`. CLI `Sources/valistream/...` -> now `Valistream/Valistream/Valistream/` (Xcode target, not the package).
 
-## Build / test (binding: use xcode-tools MCP)
-- Build: `BuildProject` 
-- Test all: `RunAllTests`
-- Test subset: `RunSomeTests` with `[{targetName, testIdentifier}]` (e.g. `M3U8TokenizerTests` or `M3U8TokenizerTests/handlesCRLF()`)
+## Build / test (binding: xcode-tools MCP, tab windowtab1)
+- Build CLI + its deps: `BuildProject` (builds workspace; resolves packages, compiles ValistreamCore + CLI). Verified green; CLI `--version`->0.1.0, bad URL->exit 2.
+- Package lib/tests: `swift test` inside `Valistream/Package/` (RunAllTests via workspace only if a scheme covers the package test targets — not confirmed).
+- Test subset: `RunSomeTests` [{targetName, testIdentifier}].
+- Built CLI binary path: DerivedData `.../Valistream-*/Build/Products/Debug/Valistream`.
 
 ## IMPORTANT: Serena LSP unavailable for Swift
-serena symbol/replace_content/replace_symbol_body tools FAIL: "No language servers available". Use built-in Edit/Write for Swift code edits. Serena memory tools work fine.
+serena symbol tools + `replace_content`/`replace_symbol_body` FAIL ("No language servers available"). Use built-in Edit/Write for Swift edits. serena ALSO has no `search_for_pattern`/`find_file`/`list_dir` exposed here. serena memory tools work. For text search use Bash grep (docs only — Bash *code* inspection needs explicit permission per CLAUDE.md). For whitespace-sensitive structured edits (pbxproj, fenced md) a python script with assertions is reliable.
 
 ## Conventions (binding)
-- Code: `styleguide.md` (repo root) — 4-space indent, `else`/`catch` on new line, file header block, MARK order, no Foundation when Swift-native exists.
+- Code: `styleguide.md` (repo root) — 4-space indent, else/catch on new line, file header block, MARK order, no Foundation when Swift-native exists.
 - Tests: `unit-testing.md` — Swift Testing only, struct suites, `#require` not force-unwrap, `== false` not `!`, area tag per suite from `_setup/Tags.swift`.
-
-## Progress
-Phase 1 (T001-T003) done. Phase 2: T004/T006 tokenizer+AttributeList done (14 tests green).

@@ -19,7 +19,7 @@ struct ProgressView: Sendable {
 
     let mode: TerminalOutputMode
     private(set) var spinnerIndex: Int = 0
-    private let frames: [String] = ["|", "/", "-", "\\"]
+    private static let frames: [String] = ["|", "/", "-", "\\"]
 
 
 
@@ -27,15 +27,15 @@ struct ProgressView: Sendable {
 
     /// Updates the progress display. Mutates `spinnerIndex` on TTY runs.
     mutating func render(_ progress: ActivityProgress) {
-        let text = ProgressFormatter.format(progress)
         if mode.colorEnabled {
-            let frame = frames[spinnerIndex % frames.count]
+            let text = ProgressFormatter.format(progress)
+            let frame = Self.frames[spinnerIndex % Self.frames.count]
             spinnerIndex += 1
             FileHandle.standardOutput.write(Data("\r\u{1B}[K\(frame) \(text)".utf8))
         }
         else {
             guard mode.verbosity != .quiet else { return }
-            print(text)
+            print(ProgressFormatter.format(progress))
         }
     }
 

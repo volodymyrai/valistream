@@ -51,7 +51,7 @@ struct TerminalWriter: Sendable {
     /// Writes a blank separator between logical message groups (FR-010). Suppressed in quiet mode.
     func writeBlankLine() {
         guard mode.verbosity != .quiet else { return }
-        print("")
+        print()
     }
 
     /// Writes to stderr — used in `--json` mode where stdout carries structured data.

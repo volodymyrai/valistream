@@ -154,9 +154,10 @@ public actor ValidationSession {
         var mediaLoads: [LoadedPlaylist] = []
         if case .master(let master) = rootPlaylist {
             references = loader.mediaReferences(in: master)
+            let activityLabel = "validating media playlists"
             for (index, reference) in references.enumerated() {
                 continuation.yield(.activity(ActivityProgress(
-                    activity: "validating media playlists",
+                    activity: activityLabel,
                     completed: index,
                     total: references.count
                 )))
@@ -168,14 +169,13 @@ public actor ValidationSession {
                 }
                 mediaLoads.append(load)
                 continuation.yield(.activity(ActivityProgress(
-                    activity: "validating media playlists",
+                    activity: activityLabel,
                     completed: index + 1,
                     total: references.count
                 )))
             }
         }
         else {
-            continuation.yield(.activity(ActivityProgress(activity: "validating media playlist", completed: 0, total: 1)))
             mediaLoads.append(rootLoad)
             trackPlaylist("media", kind: .media, role: .variant, url: inputURL, selected: true, refreshCount: 1)
             continuation.yield(.activity(ActivityProgress(activity: "validating media playlist", completed: 1, total: 1)))

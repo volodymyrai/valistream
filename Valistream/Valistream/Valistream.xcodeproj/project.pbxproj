@@ -10,6 +10,7 @@
 		AAAAAAAAAAAAAAAAAAAAAA04 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = AAAAAAAAAAAAAAAAAAAAAA02 /* ArgumentParser */; };
 		AAAAAAAAAAAAAAAAAAAAAA05 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = AAAAAAAAAAAAAAAAAAAAAA03 /* ValistreamCore */; };
 		F12CD5372FDD639D00CD1BC7 /* Rainbow in Frameworks */ = {isa = PBXBuildFile; productRef = F12CD5362FDD639D00CD1BC7 /* Rainbow */; };
+		F12EB69F2FDDCEEE00884206 /* Promptberry in Frameworks */ = {isa = PBXBuildFile; productRef = F12EB69E2FDDCEEE00884206 /* Promptberry */; };
 		F15A62642FDC628C00460679 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = F15A62632FDC628C00460679 /* ValistreamCore */; };
 		F15A62722FDC647A00460679 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = F15A62712FDC647A00460679 /* ValistreamCore */; };
 /* End PBXBuildFile section */
@@ -52,6 +53,7 @@
 				F15A62642FDC628C00460679 /* ValistreamCore in Frameworks */,
 				F12CD5372FDD639D00CD1BC7 /* Rainbow in Frameworks */,
 				AAAAAAAAAAAAAAAAAAAAAA04 /* ArgumentParser in Frameworks */,
+				F12EB69F2FDDCEEE00884206 /* Promptberry in Frameworks */,
 				AAAAAAAAAAAAAAAAAAAAAA05 /* ValistreamCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -117,6 +119,7 @@
 				AAAAAAAAAAAAAAAAAAAAAA03 /* ValistreamCore */,
 				F15A62632FDC628C00460679 /* ValistreamCore */,
 				F12CD5362FDD639D00CD1BC7 /* Rainbow */,
+				F12EB69E2FDDCEEE00884206 /* Promptberry */,
 			);
 			productName = Valistream;
 			productReference = F15A62492FDC4E6300460679 /* valistream */;
@@ -176,6 +179,7 @@
 				AAAAAAAAAAAAAAAAAAAAAA01 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 				F15A62622FDC628C00460679 /* XCLocalSwiftPackageReference "../ValistreamCore" */,
 				F12CD5352FDD639D00CD1BC7 /* XCRemoteSwiftPackageReference "Rainbow" */,
+				F12EB69D2FDDCEEE00884206 /* XCRemoteSwiftPackageReference "Promptberry" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F15A624A2FDC4E6300460679 /* Products */;
@@ -454,6 +458,14 @@
 				minimumVersion = 4.2.1;
 			};
 		};
+		F12EB69D2FDDCEEE00884206 /* XCRemoteSwiftPackageReference "Promptberry" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onmyway133/Promptberry.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -470,6 +482,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F12CD5352FDD639D00CD1BC7 /* XCRemoteSwiftPackageReference "Rainbow" */;
 			productName = Rainbow;
+		};
+		F12EB69E2FDDCEEE00884206 /* Promptberry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F12EB69D2FDDCEEE00884206 /* XCRemoteSwiftPackageReference "Promptberry" */;
+			productName = Promptberry;
 		};
 		F15A62632FDC628C00460679 /* ValistreamCore */ = {
 			isa = XCSwiftPackageProductDependency;

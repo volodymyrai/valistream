@@ -5,6 +5,7 @@
 //  Created by Volodymyr Akimenko on 13/06/2026.
 //
 
+import Darwin
 import Foundation
 import ValistreamCore
 
@@ -31,7 +32,10 @@ struct ProgressView: Sendable {
             let text = ProgressFormatter.format(progress)
             let frame = Self.frames[spinnerIndex % Self.frames.count]
             spinnerIndex += 1
-            FileHandle.standardOutput.write(Data("\r\u{1B}[K\(frame) \(text)".utf8))
+            let width = Self.terminalWidth()
+            let maxText = max(0, width - 3)
+            let display = text.count > maxText ? String(text.prefix(maxText)) + "…" : text
+            FileHandle.standardOutput.write(Data("\r\u{1B}[K\(frame) \(display)".utf8))
         }
         else {
             guard mode.verbosity != .quiet else { return }
@@ -43,5 +47,14 @@ struct ProgressView: Sendable {
     func clearLine() {
         guard mode.colorEnabled else { return }
         FileHandle.standardOutput.write(Data("\r\u{1B}[K".utf8))
+    }
+
+
+
+    // MARK: - Private
+
+    private static func terminalWidth() -> Int {
+        var ws = winsize()
+        return ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 ? Int(ws.ws_col) : 80
     }
 }

@@ -28,10 +28,10 @@ struct ValistreamCommand: AsyncParsableCommand {
     @Argument(help: "HTTP/HTTPS URL of a master playlist (or media playlist, auto-detected).")
     var url: String
 
-    @Flag(name: .long, help: "Enable segment validation mode.")
+    @Flag(name: .long, help: .hidden)
     var segments = false
 
-    @Option(name: .long, help: "Bandwidth deviation tolerance in percent.")
+    @Option(name: .long, help: .hidden)
     var tolerance: Double = 10
 
     @Option(name: .long, help: "Live session time limit, e.g. 90s, 15m, 24h.")
@@ -98,15 +98,16 @@ struct ValistreamCommand: AsyncParsableCommand {
             archiveEnabled: true
         )
 
-        // On an interactive terminal, prompt with the checklist; otherwise the session resolves the
-        // selection from --select/--all (FR-018).
-        let selectPlaylists: (@Sendable ([PlaylistSelection.Candidate]) async -> [PlaylistSelection.Candidate])?
-        if config.nonInteractive {
-            selectPlaylists = nil
-        }
-        else {
-            selectPlaylists = { candidates in PlaylistChecklist(candidates: candidates).run() }
-        }
+        // FR-028: skip the prompt when non-TTY, --all/--non-interactive, or --select supplied.
+        let promptPolicy = SelectionPromptPolicy.from(
+            isTTY: tty,
+            nonInteractive: nonInteractive || all,
+            selectionPatterns: config.selectionPatterns
+        )
+        let selectPlaylists: (@Sendable ([PlaylistSelection.Candidate]) async -> [PlaylistSelection.Candidate])? =
+            promptPolicy == .skip ? nil : { @Sendable candidates in
+                PromptberrySelection(candidates: candidates).run()
+            }
 
         let session = ValidationSession(
             inputURL: inputURL,

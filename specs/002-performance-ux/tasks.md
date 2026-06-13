@@ -176,13 +176,13 @@ and exits cleanly.
 
 ### Tests for User Story 5 ⚠️ (write first, confirm they fail)
 
-- [ ] T040 [P] [US5] Core unit test: prompt-skip policy — non-TTY **or** a supplied selection (`--select`/`--all`) ⇒ skip prompt and apply the documented default (all) (FR-028), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/SelectionPromptPolicyTests.swift`
-- [ ] T041 [P] [US5] Integration test: `--all` and non-TTY runs display **no** prompt and apply the default selection, preserving scriptability (FR-028), in `Valistream/Valistream/ValistreamIntegrationTests/PromptSkipTests.swift`
+- [X] T040 [P] [US5] Core unit test: prompt-skip policy — non-TTY **or** a supplied selection (`--select`/`--all`) ⇒ skip prompt and apply the documented default (all) (FR-028), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/SelectionPromptPolicyTests.swift`
+- [X] T041 [P] [US5] Integration test: `--all` and non-TTY runs display **no** prompt and apply the default selection, preserving scriptability (FR-028), in `Valistream/Valistream/ValistreamIntegrationTests/PromptSkipTests.swift`
 
 ### Implementation for User Story 5
 
-- [ ] T042 [US5] Implement `PromptberrySelection` multi-select (arrow navigation, space toggle, all pre-selected, on-screen hints, clear selection state) (FR-027), in `Valistream/Valistream/Valistream/PromptberrySelection.swift` — depends on T002; if Promptberry is unavailable, retain the existing `PlaylistChecklist` as the fallback path (research D1/D8)
-- [ ] T043 [US5] Wire the selection step: skip when non-TTY or `--select`/`--all` supplied (default all); restore the terminal to a sane state and exit cleanly with a message on cancel/interrupt (FR-028, FR-029), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` — depends on T042
+- [X] T042 [US5] Implement `PromptberrySelection` multi-select (arrow navigation, space toggle, all pre-selected, on-screen hints, clear selection state) (FR-027), in `Valistream/Valistream/Valistream/PromptberrySelection.swift` — depends on T002; if Promptberry is unavailable, retain the existing `PlaylistChecklist` as the fallback path (research D1/D8)
+- [X] T043 [US5] Wire the selection step: skip when non-TTY or `--select`/`--all` supplied (default all); restore the terminal to a sane state and exit cleanly with a message on cancel/interrupt (FR-028, FR-029), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` — depends on T042
 
 **Checkpoint**: all five stories independently functional.
 
@@ -190,11 +190,11 @@ and exits cleanly.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T044 [P] Hide or remove the inert `--segments`/`--tolerance` flags (deferred work — spec §Out of scope) so they are not advertised, in `Valistream/Valistream/Valistream/ValistreamCommand.swift` (contracts/cli-interface)
-- [ ] T045 [P] Edge cases: graceful truncation/wrapping of long URLs/paths on narrow terminals and degrade-to-plain when the terminal can't render color (spec §Edge Cases), in `Valistream/Valistream/Valistream/TerminalWriter.swift` + `ProgressView.swift`
-- [ ] T046 [P] Update `README` and help text to document every new option (`--output`, `--verbose`, `--no-color`) and the `valistream` name (FR-004, SC-009)
-- [ ] T047 Style/test compliance pass on all new code against `styleguide.md` and `unit-testing.md` (repo root)
-- [ ] T048 Regression gate: `swift test` (unit/conformance) + `Valistream.xctestplan` (integration via Xcode scheme) all green; confirm exit codes and JSON report schema unchanged vs feature 001 (FR-003, SC-010) — pipe builds/tests through `xcsift`
+- [X] T044 [P] Hide or remove the inert `--segments`/`--tolerance` flags (deferred work — spec §Out of scope) so they are not advertised, in `Valistream/Valistream/Valistream/ValistreamCommand.swift` (contracts/cli-interface)
+- [X] T045 [P] Edge cases: graceful truncation/wrapping of long URLs/paths on narrow terminals and degrade-to-plain when the terminal can't render color (spec §Edge Cases), in `Valistream/Valistream/Valistream/TerminalWriter.swift` + `ProgressView.swift`
+- [X] T046 [P] Update `README` and help text to document every new option (`--output`, `--verbose`, `--no-color`) and the `valistream` name (FR-004, SC-009)
+- [X] T047 Style/test compliance pass on all new code against `styleguide.md` and `unit-testing.md` (repo root)
+- [X] T048 Regression gate: `swift test` (unit/conformance) + `Valistream.xctestplan` (integration via Xcode scheme) all green; confirm exit codes and JSON report schema unchanged vs feature 001 (FR-003, SC-010) — pipe builds/tests through `xcsift`
 - [ ] T049 Execute [quickstart.md](quickstart.md) end-to-end against a real multi-playlist VOD and a live stream (US1–US5 scenarios, incl. SC-001/003/004/005/006/007/009); also run the **manual** checks: SC-008 (an unfamiliar user locates a named finding in the report in < 30 s) and FR-029 (Ctrl-C while the selection prompt is open restores the terminal and exits cleanly)
 
 ---

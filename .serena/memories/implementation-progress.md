@@ -53,10 +53,17 @@ RFC8216.4.3.1.1, .4.3.4.2-BANDWIDTH, .4.3.4.2-URI, .4.3.4.1, .4.3.4.2.1, .4.3.3.
 - **233 tests green** (RunAllTests, Xcode Valistream scheme).
 - T034 (`LiveReportFreshnessTests.swift`) file written to `Valistream/Valistream/Valistream/ValistreamIntegrationTests/`; needs adding to Xcode project target before it runs.
 
+## US5 done (June 2026) — T040–T048 all [X]
+- `SelectionPromptPolicy` enum in `Session/SelectionPromptPolicy.swift`: `.prompt`/`.skip` with `from(isTTY:nonInteractive:selectionPatterns:)` factory — encodes FR-028 skip rule.
+- `PromptberrySelection` in `Valistream/PromptberrySelection.swift`: wraps `Promptberry.multiselect`, all candidates pre-selected, `SelectOption<String>` (ID-based) map. On `PromptCancelled` → `Promptberry.cancel` + `Foundation.exit(0)` (FR-029).
+- `ValistreamCommand` updated: `SelectionPromptPolicy.from(isTTY:nonInteractive:all:selectionPatterns:)` drives `selectPlaylists` nil-or-closure; `--select` now also skips prompt (was a bug). `--segments`/`--tolerance` hidden (`.hidden`).
+- `ProgressView.render` truncates in-place TTY line to terminal width via `ioctl TIOCGWINSZ` (T045, narrow-terminal edge case).
+- `README.md` created at repo root documenting all options, exit codes, and session output (T046).
+- Unit: 7 new `SelectionPromptPolicyTests` in `Session/` — all skip conditions + default-selection behavior. `swift test`: **189 tests green**.
+- Integration: 3 new `PromptSkipTests` — prompt-closure not called, pattern filter applied, all playlists fetched. Xcode RunAllTests: **37 tests green**.
+
 ## NOT done (remaining)
-- T034 integration test: `LiveReportFreshnessTests.swift` needs adding to Xcode project ValistreamIntegrationTests target.
-- US5 (segment auditor, tasks T040+): SegmentAuditor + wiring + CLI --segments/--tolerance.
-- Polish: message-actionability audit, scale test, styleguide/unit-testing compliance pass, README, full manual quickstart.
+- T049: Manual quickstart against real streams (cannot run headless). FR-029 manual Ctrl-C prompt cancel test.
 
 ## Deviations / notes
 - swift-tools-version 6.3 (template), not 6.0 as T001 text says.

@@ -26,5 +26,6 @@ extension Tag {
     @Tag static var networking: Self
     @Tag static var archive: Self
     @Tag static var segment: Self
+    @Tag static var output: Self
     @Tag static var session: Self
 }

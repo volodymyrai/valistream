@@ -58,4 +58,42 @@ public enum SessionEvent: Sendable {
     case streamClassified(StreamKind)
     case finding(Finding)
     case monitorStateChanged(playlistID: String, state: MonitorState)
+    case activity(ActivityProgress)
+}
+
+/// Why a session finalized — drives report labeling and the CLI shutdown notice (US2, data-model).
+public enum SessionEndReason: Sendable {
+    case completed
+    case gracefulStop
+    case timeLimit
+}
+
+/// Live activity and progress state emitted on the events stream (US1, data-model).
+public struct ActivityProgress: Sendable {
+
+    // MARK: - Lets & Vars
+
+    public let activity: String
+    public let completed: Int
+    public let total: Int?
+    public let refreshes: Int?
+    public let aliasInScope: String?
+
+
+
+    // MARK: - Lifecycle
+
+    public init(
+        activity: String,
+        completed: Int,
+        total: Int? = nil,
+        refreshes: Int? = nil,
+        aliasInScope: String? = nil
+    ) {
+        self.activity = activity
+        self.completed = completed
+        self.total = total
+        self.refreshes = refreshes
+        self.aliasInScope = aliasInScope
+    }
 }

@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "BF2A4415-A37C-44E2-AA22-B187DA8070A5",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Valistream.xcodeproj",
+        "identifier" : "F15A62682FDC645F00460679",
+        "name" : "ValistreamIntegrationTests"
+      }
+    }
+  ],
+  "version" : 1
+}

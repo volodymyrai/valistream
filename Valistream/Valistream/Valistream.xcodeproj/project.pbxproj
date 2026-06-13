@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AAAAAAAAAAAAAAAAAAAAAA04 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = AAAAAAAAAAAAAAAAAAAAAA02 /* ArgumentParser */; };
 		AAAAAAAAAAAAAAAAAAAAAA05 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = AAAAAAAAAAAAAAAAAAAAAA03 /* ValistreamCore */; };
+		F12CD5372FDD639D00CD1BC7 /* Rainbow in Frameworks */ = {isa = PBXBuildFile; productRef = F12CD5362FDD639D00CD1BC7 /* Rainbow */; };
 		F15A62642FDC628C00460679 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = F15A62632FDC628C00460679 /* ValistreamCore */; };
 		F15A62722FDC647A00460679 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = F15A62712FDC647A00460679 /* ValistreamCore */; };
 /* End PBXBuildFile section */
@@ -26,7 +27,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		F15A62492FDC4E6300460679 /* Valistream */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Valistream; sourceTree = BUILT_PRODUCTS_DIR; };
+		F15A62492FDC4E6300460679 /* valistream */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = valistream; sourceTree = BUILT_PRODUCTS_DIR; };
 		F15A62692FDC645F00460679 /* ValistreamIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ValistreamIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -49,6 +50,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F15A62642FDC628C00460679 /* ValistreamCore in Frameworks */,
+				F12CD5372FDD639D00CD1BC7 /* Rainbow in Frameworks */,
 				AAAAAAAAAAAAAAAAAAAAAA04 /* ArgumentParser in Frameworks */,
 				AAAAAAAAAAAAAAAAAAAAAA05 /* ValistreamCore in Frameworks */,
 			);
@@ -78,7 +80,7 @@
 		F15A624A2FDC4E6300460679 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F15A62492FDC4E6300460679 /* Valistream */,
+				F15A62492FDC4E6300460679 /* valistream */,
 				F15A62692FDC645F00460679 /* ValistreamIntegrationTests.xctest */,
 			);
 			name = Products;
@@ -114,9 +116,10 @@
 				AAAAAAAAAAAAAAAAAAAAAA02 /* ArgumentParser */,
 				AAAAAAAAAAAAAAAAAAAAAA03 /* ValistreamCore */,
 				F15A62632FDC628C00460679 /* ValistreamCore */,
+				F12CD5362FDD639D00CD1BC7 /* Rainbow */,
 			);
 			productName = Valistream;
-			productReference = F15A62492FDC4E6300460679 /* Valistream */;
+			productReference = F15A62492FDC4E6300460679 /* valistream */;
 			productType = "com.apple.product-type.tool";
 		};
 		F15A62682FDC645F00460679 /* ValistreamIntegrationTests */ = {
@@ -172,6 +175,7 @@
 			packageReferences = (
 				AAAAAAAAAAAAAAAAAAAAAA01 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 				F15A62622FDC628C00460679 /* XCLocalSwiftPackageReference "../ValistreamCore" */,
+				F12CD5352FDD639D00CD1BC7 /* XCRemoteSwiftPackageReference "Rainbow" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F15A624A2FDC4E6300460679 /* Products */;
@@ -270,6 +274,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = valistream;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -327,6 +332,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = valistream;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
@@ -338,7 +344,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = U39BTEC455;
 				ENABLE_HARDENED_RUNTIME = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -351,7 +356,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = U39BTEC455;
 				ENABLE_HARDENED_RUNTIME = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
@@ -442,6 +446,14 @@
 				minimumVersion = 1.5.0;
 			};
 		};
+		F12CD5352FDD639D00CD1BC7 /* XCRemoteSwiftPackageReference "Rainbow" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Rainbow.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.2.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -453,6 +465,11 @@
 		AAAAAAAAAAAAAAAAAAAAAA03 /* ValistreamCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ValistreamCore;
+		};
+		F12CD5362FDD639D00CD1BC7 /* Rainbow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F12CD5352FDD639D00CD1BC7 /* XCRemoteSwiftPackageReference "Rainbow" */;
+			productName = Rainbow;
 		};
 		F15A62632FDC628C00460679 /* ValistreamCore */ = {
 			isa = XCSwiftPackageProductDependency;

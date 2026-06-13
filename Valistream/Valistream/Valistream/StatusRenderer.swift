@@ -10,19 +10,21 @@ import ValistreamCore
 
 /// Renders session events to the terminal (FR-009) in either human or `--json` mode.
 ///
-/// Human mode prints findings to stdout and status chrome to stdout; `--json` mode prints one JSON
-/// object per finding to stdout and routes status chrome to stderr (contracts/cli-interface.md).
+/// Human mode routes findings + status through `TerminalWriter` (color/verbosity gating);
+/// `--json` mode prints one JSON object per finding to stdout and routes status chrome to stderr
+/// (contracts/cli-interface.md).
 struct StatusRenderer: Sendable {
+
     // MARK: - Lets & Vars
 
+    let writer: TerminalWriter
     let json: Bool
-    let quiet: Bool
 
 
 
     // MARK: - Internal
 
-    /// Renders a single session event.
+    /// Renders a single session event. Skips `.activity` — those go to ``ProgressView``.
     func render(_ event: SessionEvent) {
         switch event {
         case .stateChanged(let state):
@@ -36,14 +38,16 @@ struct StatusRenderer: Sendable {
             )
         case .finding(let finding):
             renderFinding(finding)
+        case .activity:
+            break
         }
     }
 
     /// Prints the end-of-session summary block.
     func renderSummary(findings: [Finding], state: SessionState, sessionFolder: String?) {
-        let errors = findings.count(where: { $0.severity == .error })
+        let errors   = findings.count(where: { $0.severity == .error })
         let warnings = findings.count(where: { $0.severity == .warning })
-        let infos = findings.count(where: { $0.severity == .info })
+        let infos    = findings.count(where: { $0.severity == .info })
         renderStatus("")
         renderStatus("Session \(state.rawValue): \(errors) error(s), \(warnings) warning(s), \(infos) info.")
         if let sessionFolder {
@@ -62,35 +66,31 @@ struct StatusRenderer: Sendable {
             }
             return
         }
-        let level = finding.severity.rawValue.uppercased()
         let location = finding.location?.line.map { " :\($0)" } ?? ""
-        print("\(level) [\(finding.category.rawValue)/\(finding.ruleId)] \(finding.resource.absoluteString)\(location) — \(finding.message)")
+        let message  = "[\(finding.category.rawValue)/\(finding.ruleId)] \(finding.resource.absoluteString)\(location) — \(finding.message)"
+        writer.writeFinding(severity: finding.severity, message: message)
     }
 
-    /// Renders a non-finding status event: as a JSON status object on stdout in `--json` mode, or as
-    /// a human chrome line otherwise (contracts/cli-interface.md output streams).
     private func renderEventStatus(_ object: [String: String], human: String) {
-        guard !quiet else { return }
+        guard writer.mode.verbosity != .quiet else { return }
         if json {
             guard let data = try? JSONSerialization.data(withJSONObject: object),
                   let line = String(data: data, encoding: .utf8)
-            else {
-                return
-            }
+            else { return }
             print(line)
         }
         else {
-            print(human)
+            writer.writeStatus(human)
         }
     }
 
     private func renderStatus(_ message: String) {
-        guard !quiet else { return }
+        guard writer.mode.verbosity != .quiet else { return }
         if json {
-            FileHandle.standardError.write(Data((message + "\n").utf8))
+            writer.writeToStderr(message)
         }
         else {
-            print(message)
+            writer.writeStatus(message)
         }
     }
 }

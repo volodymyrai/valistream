@@ -54,6 +54,12 @@ struct ValistreamCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Suppress live status; findings and summary only.")
     var quiet = false
 
+    @Flag(name: .long, help: "Show extended detail: raw timestamps, all HTTP headers.")
+    var verbose = false
+
+    @Flag(name: .long, help: "Disable all terminal color output (also honored via NO_COLOR env).")
+    var noColor = false
+
 
 
     // MARK: - Run
@@ -65,12 +71,28 @@ struct ValistreamCommand: AsyncParsableCommand {
             throw ExitCode(2)
         }
 
+        guard !(quiet && verbose) else {
+            FileHandle.standardError.write(Data("valistream: --quiet and --verbose are mutually exclusive.\n".utf8))
+            throw ExitCode(2)
+        }
+
+        let tty = isStdoutTTY()
+        let verbosity: Verbosity = quiet ? .quiet : (verbose ? .verbose : .normal)
+        let mode = TerminalOutputMode(
+            isTTY: tty,
+            noColorEnv: ProcessInfo.processInfo.environment["NO_COLOR"] != nil,
+            noColorFlag: noColor,
+            termIsDumb: ProcessInfo.processInfo.environment["TERM"] == "dumb",
+            verbosity: verbosity
+        )
+        let writer = TerminalWriter(mode: mode)
+
         let config = SessionConfig(
             segmentMode: segments,
             bandwidthTolerance: tolerance / 100,
             timeLimit: limit.flatMap(Self.parseDuration),
             outputDir: URL(fileURLWithPath: outputDir),
-            nonInteractive: nonInteractive || all || !isStdoutTTY(),
+            nonInteractive: nonInteractive || all || !tty,
             selectionPatterns: select.map { $0.split(separator: ",").map(String.init) },
             archiveEnabled: true
         )
@@ -91,17 +113,29 @@ struct ValistreamCommand: AsyncParsableCommand {
             fetcher: URLSessionStreamFetcher(),
             selectPlaylists: selectPlaylists
         )
-        let renderer = StatusRenderer(json: json, quiet: quiet)
+        let renderer = StatusRenderer(writer: writer, json: json)
         let events = session.events
 
         let runTask = Task { await session.run() }
         let signalSources = Self.installSignalHandlers(session: session, runTask: runTask)
         defer { signalSources.forEach { $0.cancel() } }
 
-        for await event in events {
-            renderer.render(event)
+        // T017: dedicated render task — processes events concurrently with the session (FR-002).
+        let renderTask = Task {
+            var progressView = ProgressView(mode: mode)
+            for await event in events {
+                switch event {
+                case .activity(let p):
+                    progressView.render(p)
+                default:
+                    progressView.clearLine()
+                    renderer.render(event)
+                }
+            }
+            progressView.clearLine()
         }
         await runTask.value
+        await renderTask.value
 
         let findings = await session.recordedFindings
         let state = await session.state

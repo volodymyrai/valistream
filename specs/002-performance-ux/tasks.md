@@ -32,9 +32,9 @@ test before its implementation and confirm it fails first.
 
 **Purpose**: executable rename + new CLI-target dependencies.
 
-- [ ] T001 Set CLI target build setting `PRODUCT_NAME = valistream` (was `$(TARGET_NAME)`→`Valistream`) in `Valistream/Valistream/Valistream.xcodeproj`; verify ArgumentParser `commandName` is already `valistream`; confirm built binary is `…/Debug/valistream` (FR-001, research D9)
-- [ ] T002 Add remote SwiftPM package references **Rainbow** (color) and **Promptberry** (prompts) to the CLI target in `Valistream/Valistream/Valistream.xcodeproj`; resolve and **confirm both build under Swift 6 strict concurrency + macOS 14** (research D1). If either fails to resolve/compile, record it and activate the documented fallback (in-house ANSI / retain termios checklist) — do **not** add either dependency to the `ValistreamCore` package
-- [ ] T003 [P] Update tool-name strings to `valistream` in the session-start banner, `--help`/`--version` surface (`Valistream/Valistream/Valistream/ValistreamCommand.swift`) and `README` (FR-001, SC-009)
+- [X] T001 Set CLI target build setting `PRODUCT_NAME = valistream` (was `$(TARGET_NAME)`→`Valistream`) in `Valistream/Valistream/Valistream.xcodeproj`; verify ArgumentParser `commandName` is already `valistream`; confirm built binary is `…/Debug/valistream` (FR-001, research D9)
+- [X] T002 Add remote SwiftPM package references **Rainbow** (color) and **Promptberry** (prompts) to the CLI target in `Valistream/Valistream/Valistream.xcodeproj`; resolve and **confirm both build under Swift 6 strict concurrency + macOS 14** (research D1). If either fails to resolve/compile, record it and activate the documented fallback (in-house ANSI / retain termios checklist) — do **not** add either dependency to the `ValistreamCore` package
+- [X] T003 [P] Update tool-name strings to `valistream` in the session-start banner, `--help`/`--version` surface (`Valistream/Valistream/Valistream/ValistreamCommand.swift`) and `README` (FR-001, SC-009)
 
 ---
 
@@ -45,11 +45,11 @@ into US1) so later stories don't depend on US1 — preserving story independence
 
 **⚠️ CRITICAL**: No user story work begins until this phase is complete.
 
-- [ ] T004 [P] Unit tests for `TerminalOutputMode` styling decision (TTY × `NO_COLOR` × `--no-color` × `TERM=dumb` → styling on/off) and `Verbosity` levels, in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/TerminalOutputModeTests.swift` (FR-009)
-- [ ] T005 [P] Implement pure, dependency-free `TerminalOutputMode` (styling gate predicate) + `Verbosity` enum (`quiet`/`normal`/`verbose`) in `Valistream/ValistreamCore/Sources/ValistreamCore/Output/TerminalOutputMode.swift` (research D2, D10) — no Rainbow import
-- [ ] T006 [P] Unit tests for `SessionEndReason` and the additive `SessionEvent` activity/progress case (incl. `--json` encoding stays backward-compatible) in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/SessionEventProgressTests.swift`
-- [ ] T007 Add `SessionEndReason { completed, gracefulStop, timeLimit }` and extend `SessionEvent` with an additive `.activity(ActivityProgress)` case + `ActivityProgress` model in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/SessionConfig.swift` (and `ValidationSessionState.swift` as needed) — additive only; existing event cases unchanged (FR-003, data-model)
-- [ ] T008 Implement CLI `TerminalWriter` (applies `TerminalOutputMode`: plain vs Rainbow-styled; severity text labels `ERROR`/`WARN`/`INFO`/`OK`; blank-line separation between logical messages) in `Valistream/Valistream/Valistream/TerminalWriter.swift` (FR-008, FR-009, FR-010) — depends on T002, T005
+- [X] T004 [P] Unit tests for `TerminalOutputMode` styling decision (TTY × `NO_COLOR` × `--no-color` × `TERM=dumb` → styling on/off) and `Verbosity` levels, in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/TerminalOutputModeTests.swift` (FR-009)
+- [X] T005 [P] Implement pure, dependency-free `TerminalOutputMode` (styling gate predicate) + `Verbosity` enum (`quiet`/`normal`/`verbose`) in `Valistream/ValistreamCore/Sources/ValistreamCore/Output/TerminalOutputMode.swift` (research D2, D10) — no Rainbow import
+- [X] T006 [P] Unit tests for `SessionEndReason` and the additive `SessionEvent` activity/progress case (incl. `--json` encoding stays backward-compatible) in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/SessionEventProgressTests.swift`
+- [X] T007 Add `SessionEndReason { completed, gracefulStop, timeLimit }` and extend `SessionEvent` with an additive `.activity(ActivityProgress)` case + `ActivityProgress` model in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/SessionConfig.swift` (and `ValidationSessionState.swift` as needed) — additive only; existing event cases unchanged (FR-003, data-model)
+- [X] T008 Implement CLI `TerminalWriter` (applies `TerminalOutputMode`: plain vs Rainbow-styled; severity text labels `ERROR`/`WARN`/`INFO`/`OK`; blank-line separation between logical messages) in `Valistream/Valistream/Valistream/TerminalWriter.swift` (FR-008, FR-009, FR-010) — depends on T002, T005
 
 **Checkpoint**: shared output policy + core event/finalization types ready.
 
@@ -66,18 +66,18 @@ display never freezes during fetch/validation bursts.
 
 ### Tests for User Story 1 ⚠️ (write first, confirm they fail)
 
-- [ ] T009 [P] [US1] Integration test: non-interactive run emits plain, discrete progress lines with **zero** ANSI/cursor/animation control bytes and remains legible (SC-004, FR-007), in `Valistream/Valistream/ValistreamIntegrationTests/NonInteractiveOutputTests.swift`
-- [ ] T010 [P] [US1] Core unit test: a one-shot session emits `.activity(ActivityProgress)` events whose `completed`/`total` advance through fetch→validate stages (driven by `ScriptedStreamFetcher`), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/ProgressEventsTests.swift` (FR-005)
-- [ ] T011 [P] [US1] Core unit test: `ProgressFormatter` renders `activity — N of M (xx%)` (and live "refreshes done") correctly across known/unknown totals, in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/ProgressFormatterTests.swift`
+- [X] T009 [P] [US1] Integration test: non-interactive run emits plain, discrete progress lines with **zero** ANSI/cursor/animation control bytes and remains legible (SC-004, FR-007), in `Valistream/Valistream/ValistreamIntegrationTests/NonInteractiveOutputTests.swift`
+- [X] T010 [P] [US1] Core unit test: a one-shot session emits `.activity(ActivityProgress)` events whose `completed`/`total` advance through fetch→validate stages (driven by `ScriptedStreamFetcher`), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/ProgressEventsTests.swift` (FR-005)
+- [X] T011 [P] [US1] Core unit test: `ProgressFormatter` renders `activity — N of M (xx%)` (and live "refreshes done") correctly across known/unknown totals, in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/ProgressFormatterTests.swift`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implement pure `ProgressFormatter` (activity + counts/percentage formatting) in `Valistream/ValistreamCore/Sources/ValistreamCore/Output/ProgressFormatter.swift` (FR-005)
-- [ ] T013 [US1] Emit `.activity(ActivityProgress)` events at each stage of `ValidationSession.run()`/`monitor()`/`monitorPlaylist()` ("fetching master", "validating i of n", "monitoring live, k refreshes") without blocking the work path (FR-002, FR-005), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T007
-- [ ] T014 [US1] Implement CLI `ProgressView`: in-place TTY status line (spinner + counts, CR + clear-to-EOL, redraw ≥1 Hz) and plain discrete lines on non-TTY (FR-006, FR-007, SC-001), in `Valistream/Valistream/Valistream/ProgressView.swift` — depends on T008, T012
-- [ ] T015 [US1] Update `StatusRenderer` to color findings/messages by severity via `TerminalWriter`, add blank-line spacing, and print discrete log lines above the live progress line (FR-008, FR-010), in `Valistream/Valistream/Valistream/StatusRenderer.swift` — depends on T008
-- [ ] T016 [US1] Add `--verbose` flag and enforce `--quiet`/`--verbose` mutual exclusion (exit 2); thread `Verbosity` into `StatusRenderer`/`ProgressView` gating (FR-011), in `Valistream/Valistream/Valistream/ValistreamCommand.swift`
-- [ ] T017 [US1] Run a dedicated render `Task` consuming `session.events` concurrently with the session so the display updates while work proceeds and never blocks input/interrupts (FR-002, SC-001, SC-002), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` — depends on T013, T014, T015
+- [X] T012 [P] [US1] Implement pure `ProgressFormatter` (activity + counts/percentage formatting) in `Valistream/ValistreamCore/Sources/ValistreamCore/Output/ProgressFormatter.swift` (FR-005)
+- [X] T013 [US1] Emit `.activity(ActivityProgress)` events at each stage of `ValidationSession.run()`/`monitor()`/`monitorPlaylist()` ("fetching master", "validating i of n", "monitoring live, k refreshes") without blocking the work path (FR-002, FR-005), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T007
+- [X] T014 [US1] Implement CLI `ProgressView`: in-place TTY status line (spinner + counts, CR + clear-to-EOL, redraw ≥1 Hz) and plain discrete lines on non-TTY (FR-006, FR-007, SC-001), in `Valistream/Valistream/Valistream/ProgressView.swift` — depends on T008, T012
+- [X] T015 [US1] Update `StatusRenderer` to color findings/messages by severity via `TerminalWriter`, add blank-line spacing, and print discrete log lines above the live progress line (FR-008, FR-010), in `Valistream/Valistream/Valistream/StatusRenderer.swift` — depends on T008
+- [X] T016 [US1] Add `--verbose` flag and enforce `--quiet`/`--verbose` mutual exclusion (exit 2); thread `Verbosity` into `StatusRenderer`/`ProgressView` gating (FR-011), in `Valistream/Valistream/Valistream/ValistreamCommand.swift`
+- [X] T017 [US1] Run a dedicated render `Task` consuming `session.events` concurrently with the session so the display updates while work proceeds and never blocks input/interrupts (FR-002, SC-001, SC-002), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` — depends on T013, T014, T015
 
 **Checkpoint**: responsive, color-coded, spaced, narrated output on TTY; clean plain output on non-TTY. MVP shippable.
 

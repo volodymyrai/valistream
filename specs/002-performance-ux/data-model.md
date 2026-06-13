@@ -94,6 +94,23 @@ The tool's current activity description + progress counters surfaced live (US1; 
 
 ---
 
+### TerminalOutputMode & Verbosity  *(core — new)*
+
+Pure, dependency-free output **policy** consumed by the CLI renderer. The styling-gate *predicate* and
+the verbosity enum live in **core** (unit-testable without a terminal, no Rainbow import); the CLI only
+*applies* the result (see `TerminalWriter` below).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `colorEnabled` | Bool | `isatty ∧ ¬NO_COLOR ∧ ¬--no-color ∧ TERM≠dumb` (D2) |
+| `verbosity` | enum `{ quiet, normal, verbose }` | FR-011; `--quiet`/`--verbose` mutually exclusive |
+
+**Rules**: when `colorEnabled == false`, every render emits plain text (no SGR/cursor bytes). Severity
+is always also labeled in text (FR-009). Verbosity affects on-screen output only — never report files
+or exit codes (FR-003/FR-011).
+
+---
+
 ### SessionEndReason  *(core — new)*
 
 Why a session finalized, so the report and CLI can label outcomes consistently (US2; FR-014–015).
@@ -129,19 +146,13 @@ Both the human-readable (Markdown) and structured (JSON) reports.
 ## CLI-side types *(CLI target — not core)*
 
 These are terminal/IO concerns; they import Rainbow/Promptberry and never appear in the domain core.
+They hold **no policy** — they apply the pure core `TerminalOutputMode`/`Verbosity` above.
 
-### OutputStyle / Theme
+### TerminalWriter
 
-Holds the styling gate result (D2) and the severity palette.
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `colorEnabled` | Bool | `isatty ∧ ¬NO_COLOR ∧ ¬--no-color ∧ TERM≠dumb` |
-| `verbosity` | enum `{ quiet, normal, verbose }` | FR-011; mutually exclusive flags |
-
-**Rules**: when `colorEnabled == false`, every render emits plain text (no SGR/cursor bytes). Severity
-is always also labeled in text (FR-009). Verbosity affects on-screen output only — never report files
-or exit codes (FR-003/FR-011).
+Applies the core `TerminalOutputMode` to real terminal output: plain vs **Rainbow**-styled text, the
+severity palette (`ERROR`/`WARN`/`INFO`/`OK`), and blank-line separation between logical messages
+(FR-008–010). Reads `colorEnabled`/`verbosity` from the core mode; adds no gating logic of its own.
 
 ### InterruptCounter
 

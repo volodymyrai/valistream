@@ -116,7 +116,7 @@ Valistream/
 │   │   ├── ValistreamCommand.swift              # + --verbose/--no-color; mutual-exclusion; output pre-flight
 │   │   │                                        #   + 2-stage SIGINT (graceful → force); banner says 'valistream'
 │   │   ├── StatusRenderer.swift                 # color (Rainbow) + verbosity + spacing + live progress (TTY/non-TTY)
-│   │   ├── OutputStyle.swift                    # NEW: styling gate + verbosity + severity palette (CLI)
+│   │   ├── TerminalWriter.swift                 # NEW: applies core TerminalOutputMode — plain vs Rainbow, severity palette, blank-line spacing (CLI)
 │   │   ├── ProgressView.swift                   # NEW: in-place TTY status line / plain non-TTY lines (CLI)
 │   │   ├── PromptberrySelection.swift           # NEW: Promptberry multi-select (replaces/ wraps checklist)
 │   │   └── PlaylistChecklist.swift              # retained as fallback (research.md D1/D8)
@@ -124,6 +124,9 @@ Valistream/
 └── ValistreamCore/                              # SwiftPM package — stays dependency-free
     ├── Package.swift                            # unchanged (no new deps)
     ├── Sources/ValistreamCore/
+    │   ├── Output/
+    │   │   ├── TerminalOutputMode.swift         # NEW: pure styling-gate predicate + Verbosity enum (no Rainbow)
+    │   │   └── ProgressFormatter.swift          # NEW: pure activity + counts/percentage formatting
     │   ├── Session/
     │   │   ├── ValidationSession.swift          # unified finish() for completion/stop/limit; cancel-in-flight;
     │   │   │                                    #   one-shot honors stop; per-cycle writeReport; emits activity/progress
@@ -134,15 +137,18 @@ Valistream/
     │   │   └── …                                # SessionEvent gains an activity/progress case (additive)
     │   └── Archive/
     │       └── SessionArchive.swift             # atomic write helper (temp + replace) for both reports
-    └── Tests/ValistreamCoreTests/               # + PlaylistAlias, OutputLocation, atomic report, finalization tests
+    └── Tests/ValistreamCoreTests/               # + TerminalOutputMode, ProgressFormatter, PlaylistAlias, OutputLocation, atomic report, finalization, progress-event tests
 ```
 
 **Structure Decision**: reuse feature 001's structure verbatim. The **domain core remains a pure,
 zero-dependency, terminal-free library** (Constitution III): aliases, output-location resolution,
-progress events, atomic/live report writing, and unified finalization are all pure logic added to
-existing modules. Every *presentation* concern (color, in-place progress, interactive prompts) lives in
-the CLI target, which is where the two new dependencies (Rainbow, Promptberry) attach — keeping the
-core reusable (e.g., by a future GUI) and the new-dependency risk isolated.
+progress events, the pure styling-gate predicate (`TerminalOutputMode`) + `Verbosity`, progress
+formatting (`ProgressFormatter`), atomic/live report writing, and unified finalization are all pure
+logic added to existing modules (a new `Output/` module plus `Session/`). Every *terminal* concern that
+must touch the screen or a library — color *application* (Rainbow), in-place progress *rendering*,
+interactive prompts (Promptberry) — lives in the CLI target (`TerminalWriter`, `ProgressView`,
+`PromptberrySelection`), which is where the two new dependencies attach — keeping the core reusable
+(e.g., by a future GUI) and the new-dependency risk isolated.
 
 ## Implementation Guidance
 

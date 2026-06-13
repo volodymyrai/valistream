@@ -1,6 +1,6 @@
 # Feature Specification: Performance and UX
 
-**Feature Branch**: `002-performance-ux`
+**Feature Branch**: `main` (no dedicated feature branch — git extension not installed)
 
 **Created**: 2026-06-13
 

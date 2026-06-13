@@ -130,6 +130,8 @@ Checks:
 - `LC_ALL=C grep -E 'https?://' <report.md>` shows URLs only inside the Legend section (SC-007).
 - The structured JSON validates against feature 001's frozen schema (SC-010):
   [`session-report.schema.json`](../001-hls-stream-validator/contracts/session-report.schema.json).
+- **Manual usability (SC-008)**: hand the report to someone unfamiliar with the stream and confirm they
+  locate a specific named finding in **under 30 seconds** (validates the prettified sections + legend).
 
 ---
 

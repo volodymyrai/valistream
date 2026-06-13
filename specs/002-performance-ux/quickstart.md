@@ -12,7 +12,8 @@ and the code; this is a validation/run guide. Contracts referenced:
 - macOS 14+, Xcode toolchain (Swift 6.x).
 - Build via the **xcode-tools** MCP (`BuildProject` over `Valistream.xcworkspace`); analyze logs with
   `xcsift`. Unit/conformance tests: `swift test` inside `Valistream/ValistreamCore/`. Integration
-  tests: Xcode scheme `Valistream` / `Valistream.xctestplan` (xcode-tools `RunSomeTests`/`RunAllTests`).
+  tests: Xcode scheme `IntegrationTests` / `IntegrationTests.xctestplan` (integration only) or
+  `Valistream` / `Valistream.xctestplan` (full suite) — both via xcode-tools `RunSomeTests`/`RunAllTests`.
 - Built binary (after rename, D9): `…/DerivedData/Valistream-*/Build/Products/Debug/valistream`.
 - A reachable master playlist URL (VOD with several media playlists; and a live URL for US1/US2/US4).
 

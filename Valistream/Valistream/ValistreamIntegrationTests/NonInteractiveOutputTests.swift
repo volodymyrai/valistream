@@ -21,7 +21,7 @@ struct NonInteractiveOutputTests {
     // MARK: - Tests
 
     @Test("activity lines formatted for non-TTY contain no ANSI escape sequences (SC-004, FR-007)")
-    func activityLinesHaveNoANSI() async {
+    func activityLinesHaveNoANSI() async throws {
         let master = URL(string: base + "master.m3u8")!
         let fetcher = ScriptedStreamFetcher()
         fetcher.stub(master, body: Fixtures.conformantMaster)
@@ -38,7 +38,7 @@ struct NonInteractiveOutputTests {
         )
 
         let activityLines = await collectActivityLines(from: session)
-        #require(!activityLines.isEmpty, "Expected at least one activity line")
+        try #require(!activityLines.isEmpty, "Expected at least one activity line")
         for line in activityLines {
             #expect(!line.contains("\u{1B}["), "ANSI escape found: \(line)")
         }

@@ -40,8 +40,9 @@ directory `~/.valistream/sessions/<session-id>/` (platform data dir on non-macOS
 omitted; reports now written **atomically, per refresh cycle** (research.md D5, D6).
 
 **Testing**: Swift Testing. Unit/conformance in the package (`swift test`); integration via the Xcode
-`Valistream` scheme / `Valistream.xctestplan` with scripted in-process transport stubs (no server) —
-unchanged harness. New unit coverage: alias derivation/stability, output-location resolution +
+`IntegrationTests` scheme / `IntegrationTests.xctestplan` (integration tests only) or
+`Valistream` scheme / `Valistream.xctestplan` (full suite) — both with scripted in-process transport
+stubs (no server). New unit coverage: alias derivation/stability, output-location resolution +
 fail-fast, atomic report writer, unified finalization + partial-report marking, styling gate
 (TTY/NO_COLOR/`--no-color`), verbosity gating, progress/activity events. TTY-only paths (prompt,
 in-place render) are tested through injected `isTTY`/seams, asserting behavior — not a real terminal.
@@ -108,7 +109,7 @@ land in existing modules:
 ```text
 Valistream/
 ├── Valistream.xcworkspace
-├── TestPlans/                                   # ValistreamCore.xctestplan + Valistream.xctestplan
+├── TestPlans/                                   # ValistreamCore.xctestplan + Valistream.xctestplan + IntegrationTests.xctestplan
 ├── Valistream/                                  # CLI Xcode project (thin presentation/IO shell)
 │   ├── Valistream.xcodeproj                     # set PRODUCT_NAME=valistream (FR-001, D9);
 │   │                                            #   add remote packages Rainbow + Promptberry (CLI target)

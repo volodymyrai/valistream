@@ -40,6 +40,8 @@ struct StatusRenderer: Sendable {
             renderFinding(finding)
         case .activity:
             break
+        case .sessionFolderResolved:
+            break
         }
     }
 

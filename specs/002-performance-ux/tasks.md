@@ -95,16 +95,16 @@ one-shot stop → PARTIAL report; `--limit` expiry finalizes via the same path.
 
 ### Tests for User Story 2 ⚠️ (write first, confirm they fail)
 
-- [ ] T018 [P] [US2] Integration test: live graceful stop finalizes a complete report + flushed archive and shuts down ≤3 s (SC-003); a second interrupt forces exit 130 (FR-013), in `Valistream/Valistream/ValistreamIntegrationTests/GracefulStopTests.swift`
-- [ ] T019 [P] [US2] Integration test: one-shot (VOD) graceful stop finalizes a report clearly marked **PARTIAL** covering playlists validated so far (FR-012, clarification), in `Valistream/Valistream/ValistreamIntegrationTests/OneShotInterruptTests.swift`
-- [ ] T020 [P] [US2] Core unit test: `finish(reason:)` records the correct `SessionEndReason` and marks one-shot graceful-stop reports partial; cancelled in-flight fetches recorded as aborted/incomplete; **a graceful stop requested during startup (before any fetch) still finalizes cleanly and writes an early-stop report** (spec §Edge Cases), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/FinalizationTests.swift`
+- [X] T018 [P] [US2] Integration test: live graceful stop finalizes a complete report + flushed archive and shuts down ≤3 s (SC-003); a second interrupt forces exit 130 (FR-013), in `Valistream/Valistream/ValistreamIntegrationTests/GracefulStopTests.swift`
+- [X] T019 [P] [US2] Integration test: one-shot (VOD) graceful stop finalizes a report clearly marked **PARTIAL** covering playlists validated so far (FR-012, clarification), in `Valistream/Valistream/ValistreamIntegrationTests/OneShotInterruptTests.swift`
+- [X] T020 [P] [US2] Core unit test: `finish(reason:)` records the correct `SessionEndReason` and marks one-shot graceful-stop reports partial; cancelled in-flight fetches recorded as aborted/incomplete; **a graceful stop requested during startup (before any fetch) still finalizes cleanly and writes an early-stop report** (spec §Edge Cases), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/FinalizationTests.swift`
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Unify finalization into `finish(reason: SessionEndReason)` — single path for `completed`/`gracefulStop`/`timeLimit`: cancel in-flight network tasks immediately (cancel the monitoring `TaskGroup`/per-fetch tasks), flush `SessionArchive` + `FindingsLog`, record cancelled fetches as aborted/incomplete, finalize report, set state (FR-012, FR-014, SC-003), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T007
-- [ ] T022 [US2] Make one-shot `run()` check `stopRequested` between playlists and finalize via `finish(.gracefulStop)` (partial) (FR-012), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T021
-- [ ] T023 [US2] Route optional time-limit expiry through `finish(.timeLimit)` so it converges on the same clean path (FR-014), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T021
-- [ ] T024 [US2] Implement two-stage SIGINT in the CLI: 1st interrupt requests graceful stop and prints a shutdown notice warning that a second interrupt forces exit; 2nd interrupt calls `_exit(130)`; on clean finish, confirm final report + artifact paths (FR-013, FR-015), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` (extend `installSignalHandlers`)
+- [X] T021 [US2] Unify finalization into `finish(reason: SessionEndReason)` — single path for `completed`/`gracefulStop`/`timeLimit`: cancel in-flight network tasks immediately (cancel the monitoring `TaskGroup`/per-fetch tasks), flush `SessionArchive` + `FindingsLog`, record cancelled fetches as aborted/incomplete, finalize report, set state (FR-012, FR-014, SC-003), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T007
+- [X] T022 [US2] Make one-shot `run()` check `stopRequested` between playlists and finalize via `finish(.gracefulStop)` (partial) (FR-012), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T021
+- [X] T023 [US2] Route optional time-limit expiry through `finish(.timeLimit)` so it converges on the same clean path (FR-014), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T021
+- [X] T024 [US2] Implement two-stage SIGINT in the CLI: 1st interrupt requests graceful stop and prints a shutdown notice warning that a second interrupt forces exit; 2nd interrupt calls `_exit(130)`; on clean finish, confirm final report + artifact paths (FR-013, FR-015), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` (extend `installSignalHandlers`)
 
 **Checkpoint**: US1 + US2 both work; graceful stop is bounded and lossless across all end paths.
 
@@ -121,14 +121,14 @@ overwrite the first; an unwritable `--output` fails fast before fetching.
 
 ### Tests for User Story 3 ⚠️ (write first, confirm they fail)
 
-- [ ] T025 [P] [US3] Core unit test: `OutputLocation` resolves relative→absolute, applies the default base (`~/.valistream/sessions/`), produces a unique per-session subfolder, and throws an actionable error when the base is unwritable (FR-016, FR-018, FR-019, FR-020), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/OutputLocationTests.swift`
-- [ ] T026 [P] [US3] Integration test: startup prints the absolute session folder path **before** fetching, and an unwritable `--output` fails fast (exit 2) before any fetch (FR-017, FR-019, SC-005), in `Valistream/Valistream/ValistreamIntegrationTests/OutputLocationStartupTests.swift`
+- [X] T025 [P] [US3] Core unit test: `OutputLocation` resolves relative→absolute, applies the default base (`~/.valistream/sessions/`), produces a unique per-session subfolder, and throws an actionable error when the base is unwritable (FR-016, FR-018, FR-019, FR-020), in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/OutputLocationTests.swift`
+- [X] T026 [P] [US3] Integration test: startup prints the absolute session folder path **before** fetching, and an unwritable `--output` fails fast (exit 2) before any fetch (FR-017, FR-019, SC-005), in `Valistream/Valistream/ValistreamIntegrationTests/OutputLocationStartupTests.swift`
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Implement `OutputLocation` resolver — absolute base (relative resolved vs CWD), default `~/.valistream/sessions/` on macOS / platform data dir elsewhere, unique `<base>/<sessionID>` subfolder, writability pre-flight (FR-016, FR-018, FR-020, research D5), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/OutputLocation.swift`
-- [ ] T028 [US3] Wire `OutputLocation` into session startup: resolve + pre-flight-create + verify writable **before** fetching; use the resolved `sessionFolder` for archive/reports (FR-018, FR-019), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T027
-- [ ] T029 [US3] CLI: print the absolute session folder path at startup before fetch; map a pre-flight failure to a fail-fast exit-2 error with an actionable message (FR-017, FR-019), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` — depends on T028
+- [X] T027 [P] [US3] Implement `OutputLocation` resolver — absolute base (relative resolved vs CWD), default `~/.valistream/sessions/` on macOS / platform data dir elsewhere, unique `<base>/<sessionID>` subfolder, writability pre-flight (FR-016, FR-018, FR-020, research D5), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/OutputLocation.swift`
+- [X] T028 [US3] Wire `OutputLocation` into session startup: resolve + pre-flight-create + verify writable **before** fetching; use the resolved `sessionFolder` for archive/reports (FR-018, FR-019), in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift` — depends on T027
+- [X] T029 [US3] CLI: print the absolute session folder path at startup before fetch; map a pre-flight failure to a fail-fast exit-2 error with an actionable message (FR-017, FR-019), in `Valistream/Valistream/Valistream/ValistreamCommand.swift` — depends on T028
 
 **Checkpoint**: predictable, discoverable, collision-free output locations.
 

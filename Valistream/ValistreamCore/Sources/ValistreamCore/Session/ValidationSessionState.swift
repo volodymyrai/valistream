@@ -83,9 +83,9 @@ public struct SessionLifecycle: Sendable, Equatable {
         var transitions: Set<SessionState> = [.aborted, .failed]
         switch state {
         case .initializing:
-            transitions.insert(.fetchingMaster)
+            transitions.formUnion([.fetchingMaster, .finishing])
         case .fetchingMaster:
-            transitions.insert(.validatingInitial)
+            transitions.formUnion([.validatingInitial, .finishing])
         case .validatingInitial:
             transitions.formUnion([.selectingPlaylists, .finishing])
         case .selectingPlaylists:

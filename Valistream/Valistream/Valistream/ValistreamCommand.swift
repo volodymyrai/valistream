@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import os
 import ValistreamCore
 
 /// The `valistream` command-line tool: validate (and, in later increments, monitor) an HLS stream.
@@ -125,6 +126,9 @@ struct ValistreamCommand: AsyncParsableCommand {
             var progressView = ProgressView(mode: mode)
             for await event in events {
                 switch event {
+                case .sessionFolderResolved(let folder):
+                    // FR-017: print absolute session folder path before any fetch.
+                    writer.writeStatus("Output: \(folder.path(percentEncoded: false))")
                 case .activity(let p):
                     progressView.render(p)
                 default:
@@ -139,14 +143,20 @@ struct ValistreamCommand: AsyncParsableCommand {
 
         let findings = await session.recordedFindings
         let state = await session.state
+        let endReason = await session.endReason
         let sessionFolder = await session.sessionFolderURL?.path(percentEncoded: false)
         renderer.renderSummary(findings: findings, state: state, sessionFolder: sessionFolder)
 
         // Graceful interrupt (SIGINT/SIGTERM) — summary still produced (FR-015).
-        if state == .aborted {
+        if endReason == .gracefulStop {
             throw ExitCode(130)
         }
         if state == .failed {
+            let message = await session.failureMessage
+            if let message {
+                FileHandle.standardError.write(Data("valistream: \(message)\n".utf8))
+                throw ExitCode(2)
+            }
             throw ExitCode(3)
         }
         if findings.contains(where: { $0.severity == .error }) {
@@ -166,19 +176,36 @@ struct ValistreamCommand: AsyncParsableCommand {
         session: ValidationSession,
         runTask: Task<Void, Never>
     ) -> [any DispatchSourceSignal] {
-        [SIGINT, SIGTERM].map { signalNumber in
-            // Ignore the default disposition so the DispatchSource observes the signal instead.
-            signal(signalNumber, SIG_IGN)
-            let source = DispatchSource.makeSignalSource(signal: signalNumber)
-            source.setEventHandler {
-                Task {
-                    await session.abort()
-                    runTask.cancel()
-                }
-            }
-            source.resume()
-            return source
+        let gracefulStopRequested = OSAllocatedUnfairLock<Bool>(initialState: false)
+        let gracefulStop: @Sendable () -> Void = {
+            Task { await session.abort(); runTask.cancel() }
         }
+
+        // SIGINT: two-stage — first press requests graceful stop; second forces immediate exit.
+        signal(SIGINT, SIG_IGN)
+        let sigintSource = DispatchSource.makeSignalSource(signal: SIGINT)
+        sigintSource.setEventHandler {
+            let isFirst = gracefulStopRequested.withLock { v in
+                guard !v else { return false }
+                v = true
+                return true
+            }
+            if isFirst {
+                fputs("\nvalistream: shutting down gracefully… press Ctrl-C again to force exit.\n", stderr)
+                gracefulStop()
+            } else {
+                _exit(130)
+            }
+        }
+        sigintSource.resume()
+
+        // SIGTERM: single-stage graceful stop (sent by process managers, not interactive users).
+        signal(SIGTERM, SIG_IGN)
+        let sigtermSource = DispatchSource.makeSignalSource(signal: SIGTERM)
+        sigtermSource.setEventHandler { gracefulStop() }
+        sigtermSource.resume()
+
+        return [sigintSource, sigtermSource]
     }
 
     /// Parses a duration string such as `90s`, `15m`, or `24h`.

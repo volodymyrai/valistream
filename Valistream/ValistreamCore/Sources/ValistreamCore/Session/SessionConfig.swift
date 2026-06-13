@@ -59,6 +59,8 @@ public enum SessionEvent: Sendable {
     case finding(Finding)
     case monitorStateChanged(playlistID: String, state: MonitorState)
     case activity(ActivityProgress)
+    /// Fired once after the output directory is resolved and writable-verified, before any fetch (FR-017).
+    case sessionFolderResolved(URL)
 }
 
 /// Why a session finalized — drives report labeling and the CLI shutdown notice (US2, data-model).

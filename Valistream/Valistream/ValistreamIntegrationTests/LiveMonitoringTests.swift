@@ -38,12 +38,12 @@ struct LiveMonitoringTests {
 
         let state = await harness.session.state
         let findings = await harness.session.recordedFindings
-        #expect(state == .aborted)
+        #expect(state == .completed)
         #expect(findings.count(where: { $0.severity == .error }) == 0)
         #expect(findings.count(where: { $0.severity == .warning }) == 0)
     }
 
-    @Test("a graceful stop ends the session in the aborted state with a summary", .timeLimit(.minutes(1)))
+    @Test("a graceful stop ends the session in the completed state with a summary", .timeLimit(.minutes(1)))
     func gracefulStopProducesSummary() async {
         let harness = LiveSessionHarness(input: media)
         harness.fetcher.timeline(media, [
@@ -57,7 +57,7 @@ struct LiveMonitoringTests {
 
         let state = await harness.session.state
         let monitorStates = await harness.session.playlistMonitorStates
-        #expect(state == .aborted)
+        #expect(state == .completed)
         #expect(monitorStates["media"] == .stopped)
     }
 }

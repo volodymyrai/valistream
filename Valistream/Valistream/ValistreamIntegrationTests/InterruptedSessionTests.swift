@@ -126,7 +126,7 @@ struct InterruptedSessionTests {
         let data = try Data(contentsOf: reportURL)
         let obj = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let session = try #require(obj["session"] as? [String: Any])
-        #expect(session["state"] as? String == "aborted")
+        #expect(session["state"] as? String == "completed")
     }
 
     @Test("report.md is written after abort", .timeLimit(.minutes(1)))

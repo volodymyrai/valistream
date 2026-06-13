@@ -49,6 +49,9 @@ public actor ValidationSession {
     private var streamKind: StreamKind?
     private var findingCounter = 0
     private var stopRequested = false
+    private var timeLimitExpired = false
+    public private(set) var endReason: SessionEndReason?
+    public private(set) var failureMessage: String?
     private var archive: SessionArchive?
     private var findingsLog: FindingsLog?
     private var diskWatcher: DiskSpaceWatcher?
@@ -124,15 +127,32 @@ public actor ValidationSession {
     /// Runs the session: fetch the master (or direct media) playlist, fetch every referenced media
     /// playlist, classify the stream, and evaluate all rules (US1). For live/event streams it then
     /// monitors the selected playlists on player-accurate cadence until stopped or the time limit
-    /// expires (US2). Findings and status flow out on ``events`` as they occur.
     public func run() async {
         startedAt = now()
         if config.archiveEnabled {
-            archive = try? SessionArchive(sessionID: id, outputDir: config.outputDir)
-            if let folder = archive?.sessionFolder {
-                findingsLog = try? FindingsLog(folder: folder)
-                diskWatcher = DiskSpaceWatcher(volumeURL: folder)
+            do {
+                let location = try OutputLocation.resolve(outputDir: config.outputDir, sessionID: id)
+                archive = try? SessionArchive(sessionID: id, outputDir: location.baseDirectory)
+                if let folder = archive?.sessionFolder {
+                    findingsLog = try? FindingsLog(folder: folder)
+                    diskWatcher = DiskSpaceWatcher(volumeURL: folder)
+                }
+                continuation.yield(.sessionFolderResolved(location.sessionFolder))
+            } catch let err as OutputLocationError {
+                failureMessage = err.description
+                setState(.failed)
+                return
+            } catch {
+                failureMessage = error.localizedDescription
+                setState(.failed)
+                return
             }
+        }
+
+        // Graceful stop requested before any fetch (spec §Edge Cases).
+        if stopRequested {
+            await finish(reason: .gracefulStop)
+            return
         }
 
         setState(.fetchingMaster)
@@ -156,6 +176,11 @@ public actor ValidationSession {
             references = loader.mediaReferences(in: master)
             let activityLabel = "validating media playlists"
             for (index, reference) in references.enumerated() {
+                // T022: check stop between playlist loads so a partial report can be written.
+                if stopRequested {
+                    await finish(reason: .gracefulStop)
+                    return
+                }
                 continuation.yield(.activity(ActivityProgress(
                     activity: activityLabel,
                     completed: index,
@@ -206,7 +231,7 @@ public actor ValidationSession {
 
         // VOD never monitors — it has ended by definition (FR-005).
         guard kind != .vod else {
-            await finish()
+            await finish(reason: .completed)
             return
         }
 
@@ -222,7 +247,7 @@ public actor ValidationSession {
         }
         guard selected.isEmpty == false else {
             recordSelectionEmptyNote()
-            await finish()
+            await finish(reason: .completed)
             return
         }
 
@@ -232,11 +257,13 @@ public actor ValidationSession {
         await monitor(selected: selected, loadedByURL: loadedByURL, kind: kind)
 
         if stopRequested {
-            setState(.aborted)
-            await writeReport(interruption: "aborted")
+            await finish(reason: .gracefulStop)
+        }
+        else if timeLimitExpired {
+            await finish(reason: .timeLimit)
         }
         else {
-            await finish()
+            await finish(reason: .completed)
         }
     }
 
@@ -345,7 +372,10 @@ public actor ValidationSession {
 
         while stopRequested == false {
             if previous.hasEndList { break }
-            if let deadline, now() >= deadline { break }
+            if let deadline, now() >= deadline {
+                timeLimitExpired = true
+                break
+            }
 
             let scheduler = RefreshScheduler(targetDuration: targetDuration)
             let delay = refreshIndex == 0 ? scheduler.initialDelay : scheduler.nextDelay(didChange: lastChanged)
@@ -356,7 +386,10 @@ public actor ValidationSession {
                 break
             }
             if stopRequested { break }
-            if let deadline, now() >= deadline { break }
+            if let deadline, now() >= deadline {
+                timeLimitExpired = true
+                break
+            }
 
             refreshIndex += 1
             let load = await loader.load(candidate.url, role: candidate.role)
@@ -451,10 +484,17 @@ public actor ValidationSession {
         }
     }
 
-    private func finish() async {
+    private func finish(reason: SessionEndReason) async {
         setState(.finishing)
-        await writeReport(interruption: nil)
+        let isPartial = reason == .gracefulStop && streamKind != .live && streamKind != .event
+        let interruption: String? = switch reason {
+        case .completed: nil
+        case .gracefulStop: isPartial ? "graceful stop — PARTIAL" : "graceful stop"
+        case .timeLimit: "time limit"
+        }
+        endReason = reason
         setState(.completed)
+        await writeReport(interruption: interruption)
     }
 
     private func archiveFetch(_ result: FetchResult, playlistID: String) async {

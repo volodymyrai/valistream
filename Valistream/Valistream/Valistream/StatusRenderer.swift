@@ -24,32 +24,33 @@ struct StatusRenderer: Sendable {
 
     // MARK: - Internal
 
-    /// Renders a single session event. Skips `.activity` — those go to ``ProgressView``.
+    /// Renders a single session event. Skips `.activity` because ``ProgressView`` owns it.
     func render(_ event: SessionEvent) {
         switch event {
         case .stateChanged(let state):
             renderEventStatus(["type": "status", "state": state.rawValue], human: "• \(state.rawValue)")
         case .streamClassified(let kind):
-            renderEventStatus(["type": "status", "classification": kind.rawValue], human: "• stream classified as \(kind.rawValue)")
+            renderEventStatus(
+                ["type": "status", "classification": kind.rawValue],
+                human: "• stream classified as \(kind.rawValue)"
+            )
         case .monitorStateChanged(let playlistID, let state):
             renderEventStatus(
                 ["type": "status", "playlist": playlistID, "monitorState": state.rawValue],
                 human: "• [\(playlistID)] \(state.rawValue)"
             )
-        case .finding(let finding):
-            renderFinding(finding)
-        case .activity:
-            break
-        case .sessionFolderResolved:
+        case .finding(let finding, let evidence):
+            renderFinding(finding, evidence: evidence)
+        case .activity, .sessionFolderResolved:
             break
         }
     }
 
     /// Prints the end-of-session summary block.
     func renderSummary(findings: [Finding], state: SessionState, sessionFolder: String?) {
-        let errors   = findings.count(where: { $0.severity == .error })
+        let errors = findings.count(where: { $0.severity == .error })
         let warnings = findings.count(where: { $0.severity == .warning })
-        let infos    = findings.count(where: { $0.severity == .info })
+        let infos = findings.count(where: { $0.severity == .info })
         renderStatus("")
         renderStatus("Session \(state.rawValue): \(errors) error(s), \(warnings) warning(s), \(infos) info.")
         if let sessionFolder {
@@ -57,20 +58,29 @@ struct StatusRenderer: Sendable {
         }
     }
 
+    /// Formats one human-readable finding using a pre-resolved evidence reference.
+    func formatFinding(_ finding: Finding, evidence: EvidenceReference) -> String {
+        writer.formatFinding(severity: finding.severity, message: evidence.terminalMessage(for: finding))
+    }
+
 
 
     // MARK: - Private
 
-    private func renderFinding(_ finding: Finding) {
+    private func renderFinding(_ finding: Finding, evidence: EvidenceReference?) {
         if json {
-            if let data = try? Finding.jsonEncoder.encode(finding), let line = String(data: data, encoding: .utf8) {
+            if let data = try? Finding.jsonEncoder.encode(finding),
+               let line = String(data: data, encoding: .utf8) {
                 print(line)
             }
             return
         }
-        let location = finding.location?.line.map { " :\($0)" } ?? ""
-        let message  = "[\(finding.category.rawValue)/\(finding.ruleId)] \(finding.resource.absoluteString)\(location) — \(finding.message)"
-        writer.writeFinding(severity: finding.severity, message: message)
+        if let evidence {
+            print(formatFinding(finding, evidence: evidence))
+        }
+        else {
+            writer.writeFinding(severity: finding.severity, message: finding.message)
+        }
     }
 
     private func renderEventStatus(_ object: [String: String], human: String) {

@@ -180,16 +180,24 @@ public struct SessionReportBuilder: Sendable {
     ///
     /// Pass an `AliasRegistry` populated at session startup so the body uses stable aliases instead
     /// of raw URLs (FR-023–026). Calling without a registry falls back to playlist IDs as labels.
+    /// Renders a human-readable Markdown report with presentation IDs and archived evidence.
+    ///
+    /// - Parameters:
+    ///   - session: The session metadata to render.
+    ///   - playlists: The frozen report playlist summaries.
+    ///   - findings: The findings to group by severity and category.
+    ///   - aliasRegistry: The presentation ID registry populated during discovery.
+    ///   - artifactIndex: The archive entries used to resolve captured bodies by URL and refresh index.
+    /// - Returns: A Markdown report whose evidence paths are inline code spans.
     public func buildMarkdown(
         session: SessionSnapshot,
         playlists: [PlaylistInfo],
         findings: [Finding],
-        aliasRegistry: AliasRegistry = AliasRegistry()
+        aliasRegistry: AliasRegistry = AliasRegistry(),
+        artifactIndex: [SessionArchive.IndexEntry] = []
     ) -> String {
         var md = "# valistream — Session Report\n\n"
-
-        // Header
-        if let interr = session.interruption, interr.contains("PARTIAL") {
+        if let interruption = session.interruption, interruption.contains("PARTIAL") {
             md += "> **PARTIAL REPORT** — session was stopped before completion.\n\n"
         }
         md += "| Field | Value |\n|-------|-------|\n"
@@ -198,67 +206,69 @@ public struct SessionReportBuilder: Sendable {
         md += "| Started | `\(session.startedAt.formatted(.iso8601))` |\n"
         md += "| Ended | `\(session.endedAt.formatted(.iso8601))` |\n"
         md += "| State | `\(session.state.rawValue)` |\n"
-        if let interr = session.interruption {
-            md += "| Interruption | \(interr) |\n"
+        if let interruption = session.interruption {
+            md += "| Interruption | \(interruption) |\n"
         }
         md += "| Stream kind | `\(session.streamKind?.rawValue ?? "unknown")` |\n"
         md += "| Low-Latency HLS | \(session.lowLatencyDetected ? "detected" : "not detected") |\n"
-        md += "| Encryption | \(session.encryptionDetected ? "detected" : "not detected") |\n"
-        md += "\n"
-
-        // Summary
-        let errors   = findings.count { $0.severity == .error }
+        md += "| Encryption | \(session.encryptionDetected ? "detected" : "not detected") |\n\n"
+        let errors = findings.count { $0.severity == .error }
         let warnings = findings.count { $0.severity == .warning }
-        let infos    = findings.count { $0.severity == .info }
-        let refreshes = playlists.map { $0.refreshCount }.max() ?? 0
+        let infos = findings.count { $0.severity == .info }
+        let refreshes = playlists.map(\.refreshCount).max() ?? 0
         md += "## Summary\n\n"
         md += "| Severity | Count |\n|----------|-------|\n"
         md += "| Error | \(errors) |\n"
         md += "| Warning | \(warnings) |\n"
-        md += "| Info | \(infos) |\n"
-        md += "\n"
+        md += "| Info | \(infos) |\n\n"
         md += "- Playlists: \(playlists.count)\n"
         md += "- Refreshes: \(refreshes)\n\n"
-
-        // Legend
         md += "## Legend\n\n"
         if aliasRegistry.all.isEmpty {
             md += "_No aliases registered._\n\n"
-        } else {
+        }
+        else {
             md += "| Alias | URL | Role |\n|-------|-----|------|\n"
             for entry in aliasRegistry.all {
                 md += "| `\(entry.alias)` | `\(entry.url.absoluteString)` | \(entry.role.rawValue) |\n"
             }
             md += "\n"
         }
-
-        // Findings — grouped by severity then category
-        if !findings.isEmpty {
+        let resolver = EvidenceResolver()
+        if findings.isEmpty == false {
             md += "## Findings\n\n"
-            let bySeverity = Dictionary(grouping: findings, by: { $0.severity })
+            let bySeverity = Dictionary(grouping: findings, by: \.severity)
             for severity in [Finding.Severity.error, .warning, .info] {
-                guard let group = bySeverity[severity], !group.isEmpty else { continue }
+                guard let group = bySeverity[severity], group.isEmpty == false else { continue }
                 md += "### \(severity.rawValue.capitalized)\n\n"
-                let byCategory = Dictionary(grouping: group, by: { $0.category })
-                for (category, catGroup) in byCategory.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                let byCategory = Dictionary(grouping: group, by: \.category)
+                for (category, categoryFindings) in byCategory.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
                     md += "**\(category.rawValue)**\n\n"
-                    for finding in catGroup {
-                        let label = aliasRegistry.alias(for: finding.resource)?.alias
+                    for finding in categoryFindings {
+                        let id = aliasRegistry.alias(for: finding.resource)?.alias
                             ?? finding.resource.lastPathComponent
-                        md += "- `\(finding.ruleId)` \(finding.message) — `\(label)`\n"
+                        md += "- `\(finding.ruleId)` \(finding.message) — `\(id)`"
+                        if finding.severity != .info {
+                            let reference = resolver.resolve(
+                                finding,
+                                aliases: aliasRegistry,
+                                artifactIndex: artifactIndex,
+                                fallbackID: id
+                            )
+                            md += " · \(markdownEvidence(reference))"
+                        }
+                        md += "\n"
                     }
                     md += "\n"
                 }
             }
         }
-
-        // Per-playlist
-        if !playlists.isEmpty {
+        if playlists.isEmpty == false {
             md += "## Per-playlist\n\n"
-            let findingsByResource = Dictionary(grouping: findings, by: { $0.resource })
+            let findingsByResource = Dictionary(grouping: findings, by: \.resource)
             for playlist in playlists {
-                let label = aliasRegistry.alias(for: playlist.url)?.alias ?? playlist.id
-                md += "### `\(label)`\n\n"
+                let id = aliasRegistry.alias(for: playlist.url)?.alias ?? playlist.id
+                md += "### `\(id)`\n\n"
                 let status = playlist.selected
                     ? "selected"
                     : (playlist.excludedByChoice ? "excluded" : "not selected")
@@ -268,10 +278,20 @@ public struct SessionReportBuilder: Sendable {
                     md += "- Staleness episodes: \(playlist.stalenessEpisodes)\n"
                 }
                 let recent = (findingsByResource[playlist.url] ?? []).suffix(5)
-                if !recent.isEmpty {
+                if recent.isEmpty == false {
                     md += "- Recent findings:\n"
-                    for f in recent {
-                        md += "  - [\(f.severity.rawValue)] `\(f.ruleId)` \(f.message)\n"
+                    for finding in recent {
+                        md += "  - [\(finding.severity.rawValue)] `\(finding.ruleId)` \(finding.message)"
+                        if finding.severity != .info {
+                            let reference = resolver.resolve(
+                                finding,
+                                aliases: aliasRegistry,
+                                artifactIndex: artifactIndex,
+                                fallbackID: id
+                            )
+                            md += " · \(markdownEvidence(reference))"
+                        }
+                        md += "\n"
                     }
                 }
                 md += "\n"
@@ -284,6 +304,25 @@ public struct SessionReportBuilder: Sendable {
 
 
     // MARK: - Private
+
+    private func markdownEvidence(_ reference: EvidenceReference) -> String {
+        switch reference {
+        case .single(let path):
+            return "evidence: `\(path)`"
+        case .pair(let older, let newer):
+            var parts = [older, newer].compactMap { $0 }.map { "`\($0)`" }
+            if older == nil {
+                parts.append("older snapshot unavailable")
+            }
+            if newer == nil {
+                parts.append("newer snapshot unavailable")
+            }
+
+            return "evidence: " + parts.joined(separator: ", ")
+        case .unavailable(let id):
+            return "no body captured for \(id)"
+        }
+    }
 
     private func buildReport(
         session: SessionSnapshot,

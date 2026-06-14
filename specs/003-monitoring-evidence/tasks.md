@@ -101,17 +101,17 @@ recovers the file(s) with no schema change.
 
 ### Tests for User Story 1 ⚠️ (write first, MUST FAIL before impl)
 
-- [ ] T006 [P] [US1] `EvidenceResolver` unit tests in
+- [X] T006 [P] [US1] `EvidenceResolver` unit tests in
       `ValistreamCore/Tests/ValistreamCoreTests/EvidenceResolverTests.swift`: `.single` for non-continuity
       ERROR/WARN; `.pair(<id>_<n-1>, <id>_<n>)` for `category == .continuity`; `.unavailable(<id>)` when
       no body captured (placeholder `master` / role+ordinal); continuity-with-one-snapshot-missing edge;
       join on `resource` URL (never `playlists[].id`). (FR-004–009)
-- [ ] T007 [P] [US1] Archive-naming unit tests in
+- [X] T007 [P] [US1] Archive-naming unit tests in
       `ValistreamCore/Tests/ValistreamCoreTests/SessionArchiveTests.swift`: `store` writes
       `playlists/<id>/<id>_<n>.m3u8` + `<id>_<n>.meta.json`; file base name equals the snapshot label;
       `IndexEntry` shape unchanged, only `bodyPath`/`metaPath` **values** change; folder/name uniqueness.
       (FR-029)
-- [ ] T008 [US1] Integration evidence-in-output test in
+- [X] T008 [US1] Integration evidence-in-output test in
       `Valistream/ValistreamIntegrationTests/EvidenceInOutputTests.swift` (scripted in-process transport
       stub): asserts each terminal + report ERROR/WARN names an on-disk evidence file with the relevant
       content; continuity names exactly two consecutive files; unavailable-body prints `no body captured
@@ -120,24 +120,24 @@ recovers the file(s) with no schema change.
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Add `EvidenceReference` + pure `EvidenceResolver` in
+- [X] T009 [US1] Add `EvidenceReference` + pure `EvidenceResolver` in
       `ValistreamCore/Sources/ValistreamCore/Session/EvidenceResolver.swift`: map `Finding` (+
       `AliasRegistry` + archive per-playlist refresh state/`artifactIndex`) → `.single` / `.pair` /
       `.unavailable`; path form `playlists/<id>/<id>_<n>.m3u8`; whole-file only; join on `resource` URL.
       (FR-004–009)
-- [ ] T010 [US1] Change `SessionArchive.store(result:playlistID:)` in
+- [X] T010 [US1] Change `SessionArchive.store(result:playlistID:)` in
       `ValistreamCore/Sources/ValistreamCore/Archive/SessionArchive.swift` to name files
       `<id>_<n>.m3u8` / `<id>_<n>.meta.json` (replace `%06d`), keyed by the real presentation `<id>`;
       keep `refreshCounts`/`IndexEntry` append. (FR-029) (sidecar pretty-encoder swap is US5/T035)
-- [ ] T011 [US1] In `ValistreamCore/Sources/ValistreamCore/Session/ValidationSession+Reporting.swift`
+- [X] T011 [US1] In `ValistreamCore/Sources/ValistreamCore/Session/ValidationSession+Reporting.swift`
       pass the **real presentation `<id>`** from the session `AliasRegistry` to `archive.store(...)`
       (replace `"master"`/`"<role>-<i>"`/`"media"` archive-ref strings). (FR-029, D6)
-- [ ] T012 [US1] Replace `StatusRenderer.renderFinding` in `Valistream/Valistream/StatusRenderer.swift`
+- [X] T012 [US1] Replace `StatusRenderer.renderFinding` in `Valistream/Valistream/StatusRenderer.swift`
       so findings print **ID + evidence** and **no** `finding.resource.absoluteString`: `ERROR/WARN
       <id>_<n> <msg> · evidence: playlists/<id>/<id>_<n>.m3u8`; continuity two paths; unavailable → `no
       body captured for <id>`. Keep the `--json` branch on the **compact** `Finding.jsonEncoder`.
       (FR-004/006/009, SC-003, FR-028)
-- [ ] T013 [US1] In `ValistreamCore/Sources/ValistreamCore/Session/SessionReportBuilder.swift` render
+- [X] T013 [US1] In `ValistreamCore/Sources/ValistreamCore/Session/SessionReportBuilder.swift` render
       every ERROR/WARN with the **same** evidence reference(s) as the terminal, as an **inline code span
       of the relative path only** (not a link); continuity → two spans; unavailable → `no body captured
       for <id>`. Use the shared `EvidenceResolver` for terminal/report parity. (FR-005/006/009)

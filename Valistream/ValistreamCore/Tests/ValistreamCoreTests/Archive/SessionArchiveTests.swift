@@ -45,10 +45,8 @@ struct SessionArchiveTests {
     func createsFolderOnInit() throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let archive = try SessionArchive(sessionID: "test-001", outputDir: tmp)
         let folder = archive.sessionFolder
-
         #expect(FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)))
         #expect(folder.lastPathComponent == "test-001")
     }
@@ -57,30 +55,30 @@ struct SessionArchiveTests {
 
     // MARK: - Store
 
-    @Test("stores body at playlists/<id>/000000.m3u8 on first store")
-    func storesBodyAtZeroPaddedPath() async throws {
+    @Test("first store uses the snapshot label for body and metadata names")
+    func firstStoreUsesSnapshotLabel() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let archive = try SessionArchive(sessionID: "s1", outputDir: tmp)
         let url = URL(string: "https://ex.com/v.m3u8")!
         let body = "#EXTM3U\n#EXT-X-ENDLIST\n"
-        let result = makeResult(url: url, body: body)
-
-        let record = try await archive.store(result: result, playlistID: "variant-0")
-
-        let bodyPath = archive.sessionFolder.appending(path: "playlists/variant-0/000000.m3u8")
+        let record = try await archive.store(
+            result: makeResult(url: url, body: body),
+            playlistID: "1080p_avc1"
+        )
+        let bodyPath = archive.sessionFolder.appending(path: "playlists/1080p_avc1/1080p_avc1_0.m3u8")
+        let metaPath = archive.sessionFolder.appending(path: "playlists/1080p_avc1/1080p_avc1_0.meta.json")
         #expect(FileManager.default.fileExists(atPath: bodyPath.path(percentEncoded: false)))
-        let written = try Data(contentsOf: bodyPath)
-        #expect(written == Data(body.utf8))
-        #expect(record.bodyPath == "playlists/variant-0/000000.m3u8")
+        #expect(FileManager.default.fileExists(atPath: metaPath.path(percentEncoded: false)))
+        #expect(try Data(contentsOf: bodyPath) == Data(body.utf8))
+        #expect(record.bodyPath == "playlists/1080p_avc1/1080p_avc1_0.m3u8")
+        #expect(bodyPath.deletingPathExtension().lastPathComponent == "1080p_avc1_0")
     }
 
     @Test("body is stored byte-exact")
     func bodyByteExact() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let archive = try SessionArchive(sessionID: "s2", outputDir: tmp)
         let bytes = Data([0xFF, 0x00, 0xAB, 0xCD])
         let result = FetchResult(
@@ -99,99 +97,100 @@ struct SessionArchiveTests {
             ),
             outcome: .success
         )
-
         try await archive.store(result: result, playlistID: "p1")
-
-        let bodyPath = archive.sessionFolder.appending(path: "playlists/p1/000000.m3u8")
-        let written = try Data(contentsOf: bodyPath)
-        #expect(written == bytes)
+        let bodyPath = archive.sessionFolder.appending(path: "playlists/p1/p1_0.m3u8")
+        #expect(try Data(contentsOf: bodyPath) == bytes)
     }
 
-    @Test("sidecar meta.json contains all ArtifactRecord fields")
+    @Test("sidecar contains every ArtifactRecord field")
     func sidecarContainsAllFields() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let archive = try SessionArchive(sessionID: "s3", outputDir: tmp)
         let url = URL(string: "https://ex.com/m.m3u8")!
-        let result = makeResult(url: url, body: "#EXTM3U\n")
-
-        let record = try await archive.store(result: result, playlistID: "media")
-
-        let metaPath = archive.sessionFolder.appending(path: "playlists/media/000000.meta.json")
-        #expect(FileManager.default.fileExists(atPath: metaPath.path(percentEncoded: false)))
-        let metaData = try Data(contentsOf: metaPath)
-        let decoded = try Finding.jsonDecoder.decode(ArtifactRecord.self, from: metaData)
+        let record = try await archive.store(
+            result: makeResult(url: url, body: "#EXTM3U\n"),
+            playlistID: "master"
+        )
+        let metaPath = archive.sessionFolder.appending(path: "playlists/master/master_0.meta.json")
+        let decoded = try Finding.jsonDecoder.decode(ArtifactRecord.self, from: Data(contentsOf: metaPath))
         #expect(decoded.requestId == record.requestId)
         #expect(decoded.url == url)
-        #expect(decoded.bodyPath == "playlists/media/000000.meta.json".replacingOccurrences(of: ".meta.json", with: ".m3u8"))
+        #expect(decoded.bodyPath == "playlists/master/master_0.m3u8")
         #expect(decoded.bodyBytes == Data("#EXTM3U\n".utf8).count)
     }
 
-    @Test("second store for same playlist increments to 000001.m3u8")
+    @Test("second store increments the snapshot index")
     func secondStoreIncrementsIndex() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let archive = try SessionArchive(sessionID: "s4", outputDir: tmp)
         let url = URL(string: "https://ex.com/live.m3u8")!
-
         try await archive.store(result: makeResult(url: url, body: "body0"), playlistID: "live")
-        let record1 = try await archive.store(result: makeResult(url: url, body: "body1"), playlistID: "live")
-
-        #expect(record1.bodyPath == "playlists/live/000001.m3u8")
-        let body1Path = archive.sessionFolder.appending(path: "playlists/live/000001.m3u8")
-        let written = try Data(contentsOf: body1Path)
-        #expect(written == Data("body1".utf8))
+        let record = try await archive.store(result: makeResult(url: url, body: "body1"), playlistID: "live")
+        #expect(record.bodyPath == "playlists/live/live_1.m3u8")
+        let bodyPath = archive.sessionFolder.appending(path: "playlists/live/live_1.m3u8")
+        #expect(try Data(contentsOf: bodyPath) == Data("body1".utf8))
     }
 
-    @Test("different playlists get separate folders")
+    @Test("different playlist IDs produce unique folders and names")
     func differentPlaylistsSeparateFolders() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let archive = try SessionArchive(sessionID: "s5", outputDir: tmp)
         let url = URL(string: "https://ex.com/p.m3u8")!
-
-        try await archive.store(result: makeResult(url: url, body: "a"), playlistID: "variant-0")
-        try await archive.store(result: makeResult(url: url, body: "b"), playlistID: "audio-0")
-
-        let v0 = archive.sessionFolder.appending(path: "playlists/variant-0/000000.m3u8")
-        let a0 = archive.sessionFolder.appending(path: "playlists/audio-0/000000.m3u8")
-        #expect(FileManager.default.fileExists(atPath: v0.path(percentEncoded: false)))
-        #expect(FileManager.default.fileExists(atPath: a0.path(percentEncoded: false)))
+        try await archive.store(result: makeResult(url: url, body: "a"), playlistID: "1080p_avc1")
+        try await archive.store(result: makeResult(url: url, body: "b"), playlistID: "audio_1")
+        let video = archive.sessionFolder.appending(path: "playlists/1080p_avc1/1080p_avc1_0.m3u8")
+        let audio = archive.sessionFolder.appending(path: "playlists/audio_1/audio_1_0.m3u8")
+        #expect(FileManager.default.fileExists(atPath: video.path(percentEncoded: false)))
+        #expect(FileManager.default.fileExists(atPath: audio.path(percentEncoded: false)))
+        #expect(video != audio)
     }
 
-    @Test("artifactIndex accumulates entries across stores")
+    @Test("artifact index shape stays unchanged while path values use snapshot labels")
+    func artifactIndexUsesSnapshotPaths() async throws {
+        let tmp = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let archive = try SessionArchive(sessionID: "s6", outputDir: tmp)
+        let url = URL(string: "https://ex.com/p.m3u8")!
+        try await archive.store(result: makeResult(url: url, body: "a"), playlistID: "master")
+        let index = await archive.artifactIndex
+        let entry = try #require(index.first)
+        #expect(entry.requestId == "r1")
+        #expect(entry.url == url)
+        #expect(entry.bodyPath == "playlists/master/master_0.m3u8")
+        #expect(entry.metaPath == "playlists/master/master_0.meta.json")
+    }
+
+    @Test("artifact index accumulates entries across stores")
     func artifactIndexAccumulates() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
-        let archive = try SessionArchive(sessionID: "s6", outputDir: tmp)
+        let archive = try SessionArchive(sessionID: "s7", outputDir: tmp)
         let url = URL(string: "https://ex.com/p.m3u8")!
-
         try await archive.store(result: makeResult(url: url, body: "a"), playlistID: "p1")
         try await archive.store(result: makeResult(url: url, body: "b"), playlistID: "p2")
         try await archive.store(result: makeResult(url: url, body: "c"), playlistID: "p1")
-
         let index = await archive.artifactIndex
         #expect(index.count == 3)
-        #expect(index[0].requestId == "r1")
-        #expect(index[1].requestId == "r2")
-        #expect(index[2].requestId == "r3")
+        #expect(index.map(\.requestId) == ["r1", "r2", "r3"])
+        #expect(index.map(\.bodyPath) == [
+            "playlists/p1/p1_0.m3u8",
+            "playlists/p2/p2_0.m3u8",
+            "playlists/p1/p1_1.m3u8",
+        ])
     }
 
-    @Test("requestId counter is monotonically increasing across playlists")
+    @Test("request IDs remain monotonic across playlists")
     func requestIdMonotonic() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
-        let archive = try SessionArchive(sessionID: "s7", outputDir: tmp)
+        let archive = try SessionArchive(sessionID: "s8", outputDir: tmp)
         let url = URL(string: "https://ex.com/p.m3u8")!
-
-        let r1 = try await archive.store(result: makeResult(url: url, body: "x"), playlistID: "master")
-        let r2 = try await archive.store(result: makeResult(url: url, body: "y"), playlistID: "variant-0")
-        #expect(r1.requestId == "r1")
-        #expect(r2.requestId == "r2")
+        let first = try await archive.store(result: makeResult(url: url, body: "x"), playlistID: "master")
+        let second = try await archive.store(result: makeResult(url: url, body: "y"), playlistID: "video_1")
+        #expect(first.requestId == "r1")
+        #expect(second.requestId == "r2")
     }
 }

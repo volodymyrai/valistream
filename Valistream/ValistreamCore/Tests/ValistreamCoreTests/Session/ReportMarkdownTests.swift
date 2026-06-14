@@ -126,26 +126,27 @@ struct ReportMarkdownTests {
 
     // MARK: - No raw playlist URLs in body (SC-007)
 
-    @Test("Findings section has zero raw .m3u8 URLs (SC-007)")
+    @Test("Findings section has no raw playlist URLs")
     func findingsHasNoRawPlaylistURLs() {
         let md = SessionReportBuilder().buildMarkdown(
-            session: makeSnapshot(), playlists: makePlaylists(),
-            findings: makeFindings(), aliasRegistry: makeRegistry()
+            session: makeSnapshot(),
+            playlists: makePlaylists(),
+            findings: makeFindings(),
+            aliasRegistry: makeRegistry()
         )
         guard let findingsRange = md.range(of: "## Findings") else {
-            Issue.record("No ## Findings section"); return
+            Issue.record("No ## Findings section")
+            return
         }
-        // Extract text from Findings onward (up to Per-playlist)
         let fromFindings = String(md[findingsRange.lowerBound...])
         let findingsBody: String
         if let perPlaylistRange = fromFindings.range(of: "## Per-playlist") {
             findingsBody = String(fromFindings[..<perPlaylistRange.lowerBound])
-        } else {
+        }
+        else {
             findingsBody = fromFindings
         }
-        // No raw .m3u8 links in Findings body
-        let rawURLMatches = findingsBody.ranges(of: ".m3u8")
-        #expect(rawURLMatches.isEmpty, "Found raw .m3u8 URL in Findings section")
+        #expect(findingsBody.contains("https://") == false)
     }
 
     @Test("Per-playlist section has zero raw .m3u8 URLs (SC-007)")
@@ -197,5 +198,87 @@ struct ReportMarkdownTests {
         #expect(legend.contains(videoURL.absoluteString))
         #expect(legend.contains("audio_1"))
         #expect(legend.contains(audioURL.absoluteString))
+    }
+
+
+    @Test("error and warning findings render evidence as inline code spans")
+    func findingsRenderEvidenceCodeSpans() {
+        let artifactIndex = [
+            SessionArchive.IndexEntry(
+                requestId: "r1",
+                url: masterURL,
+                bodyPath: "playlists/master/master_0.m3u8",
+                metaPath: "playlists/master/master_0.meta.json"
+            ),
+            SessionArchive.IndexEntry(
+                requestId: "r2",
+                url: videoURL,
+                bodyPath: "playlists/1080p_avc1/1080p_avc1_0.m3u8",
+                metaPath: "playlists/1080p_avc1/1080p_avc1_0.meta.json"
+            ),
+        ]
+        let md = SessionReportBuilder().buildMarkdown(
+            session: makeSnapshot(),
+            playlists: makePlaylists(),
+            findings: makeFindings(),
+            aliasRegistry: makeRegistry(),
+            artifactIndex: artifactIndex
+        )
+
+        #expect(md.contains("`playlists/master/master_0.m3u8`"))
+        #expect(md.contains("`playlists/1080p_avc1/1080p_avc1_0.m3u8`"))
+        #expect(md.contains("](playlists/") == false, "Evidence must be an inline code span, not a link")
+    }
+
+    @Test("continuity findings render two consecutive evidence spans")
+    func continuityRendersTwoEvidenceSpans() {
+        let continuity = Finding(
+            id: "f4", ruleId: "TOOL.continuity.media-sequence", source: .tool,
+            severity: .warning, category: .continuity, resource: videoURL,
+            location: nil, refreshIndex: 2, observedAt: start,
+            message: "Media sequence regressed", context: [:]
+        )
+        let artifactIndex = [1, 2].map { index in
+            SessionArchive.IndexEntry(
+                requestId: "r\(index)",
+                url: videoURL,
+                bodyPath: "playlists/1080p_avc1/1080p_avc1_\(index).m3u8",
+                metaPath: "playlists/1080p_avc1/1080p_avc1_\(index).meta.json"
+            )
+        }
+        let md = SessionReportBuilder().buildMarkdown(
+            session: makeSnapshot(),
+            playlists: makePlaylists(),
+            findings: [continuity],
+            aliasRegistry: makeRegistry(),
+            artifactIndex: artifactIndex
+        )
+
+        #expect(md.contains("`playlists/1080p_avc1/1080p_avc1_1.m3u8`"))
+        #expect(md.contains("`playlists/1080p_avc1/1080p_avc1_2.m3u8`"))
+    }
+
+    @Test("missing evidence names the ID without exposing the URL")
+    func missingEvidenceNamesID() {
+        let finding = Finding(
+            id: "f5", ruleId: "TOOL.delivery", source: .tool,
+            severity: .warning, category: .delivery, resource: videoURL,
+            location: nil, refreshIndex: 0, observedAt: start,
+            message: "Fetch failed", context: [:]
+        )
+        let md = SessionReportBuilder().buildMarkdown(
+            session: makeSnapshot(),
+            playlists: makePlaylists(),
+            findings: [finding],
+            aliasRegistry: makeRegistry(),
+            artifactIndex: []
+        )
+        guard let findingsStart = md.range(of: "## Findings") else {
+            Issue.record("No ## Findings section")
+            return
+        }
+        let findingsBody = String(md[findingsStart.lowerBound...])
+        #expect(findingsBody.contains("no body captured for 1080p_avc1"))
+        #expect(findingsBody.contains(videoURL.absoluteString) == false)
     }
 }

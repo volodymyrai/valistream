@@ -56,7 +56,7 @@ public struct SessionConfig: Sendable, Equatable {
 public enum SessionEvent: Sendable {
     case stateChanged(SessionState)
     case streamClassified(StreamKind)
-    case finding(Finding)
+    case finding(Finding, evidence: EvidenceReference?)
     case monitorStateChanged(playlistID: String, state: MonitorState)
     case activity(ActivityProgress)
     /// Fired once after the output directory is resolved and writable-verified, before any fetch (FR-017).

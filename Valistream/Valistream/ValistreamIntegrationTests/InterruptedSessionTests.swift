@@ -53,20 +53,16 @@ struct InterruptedSessionTests {
     func initialPlaylistArchivedBeforeAbort() async throws {
         let tmp = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: tmp) }
-
         let config = SessionConfig(outputDir: tmp, nonInteractive: true, archiveEnabled: true)
         let harness = LiveSessionHarness(input: media, config: config)
         harness.fetcher.timeline(media, [
             .init(at: .seconds(0), reply: .body(LivePlaylists.window(mediaSequence: 0, segments: ["s0.ts", "s1.ts"]))),
         ])
         harness.start()
-
         await harness.step(by: 6, refreshing: media)
         await harness.abortAndFinish()
-
         let folder = try #require(await harness.session.sessionFolderURL)
-        // The initial media fetch is stored under playlists/media/ (direct media URL, no master).
-        let body = folder.appending(path: "playlists/media/000000.m3u8")
+        let body = folder.appending(path: "playlists/video_1/video_1_0.m3u8")
         #expect(FileManager.default.fileExists(atPath: body.path(percentEncoded: false)))
     }
 

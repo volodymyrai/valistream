@@ -62,26 +62,32 @@ public actor SessionArchive {
     /// Body at `playlists/<playlistID>/NNNNNN.m3u8`; sidecar at
     /// `playlists/<playlistID>/NNNNNN.meta.json`. Returns the populated `ArtifactRecord` whose
     /// `bodyPath` is relative to the session folder.
+    /// Archives one playlist fetch using a self-identifying snapshot label.
+    ///
+    /// Body and sidecar paths use `playlists/<playlistID>/<playlistID>_<index>` and remain relative
+    /// to the session folder in the returned record and artifact index.
     @discardableResult
     public func store(result: FetchResult, playlistID: String) throws -> ArtifactRecord {
         requestCounter += 1
         let requestId = "r\(requestCounter)"
         let refreshIndex = refreshCounts[playlistID, default: 0]
         refreshCounts[playlistID] = refreshIndex + 1
-
-        let paddedIndex = String(format: "%06d", refreshIndex)
+        let snapshot = SnapshotID.label(id: playlistID, index: refreshIndex)
         let playlistDir = sessionFolder.appending(path: "playlists/\(playlistID)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: playlistDir, withIntermediateDirectories: true)
-
-        let bodyRelPath = "playlists/\(playlistID)/\(paddedIndex).m3u8"
-        let metaRelPath = "playlists/\(playlistID)/\(paddedIndex).meta.json"
-
+        let bodyRelPath = "playlists/\(playlistID)/\(snapshot).m3u8"
+        let metaRelPath = "playlists/\(playlistID)/\(snapshot).meta.json"
         try result.body.write(to: sessionFolder.appending(path: bodyRelPath))
         let record = ArtifactRecord(requestId: requestId, bodyPath: bodyRelPath, result: result)
         let metaData = try Finding.jsonEncoder.encode(record)
         try metaData.write(to: sessionFolder.appending(path: metaRelPath))
+        artifactIndex.append(IndexEntry(
+            requestId: requestId,
+            url: result.url,
+            bodyPath: bodyRelPath,
+            metaPath: metaRelPath
+        ))
 
-        artifactIndex.append(IndexEntry(requestId: requestId, url: result.url, bodyPath: bodyRelPath, metaPath: metaRelPath))
         return record
     }
 

@@ -49,6 +49,8 @@ public actor ValidationSession {
     private var lifecycle = SessionLifecycle()
     private var findings: [Finding] = []
     private var recordedSignatures: Set<String> = []
+    var evidenceEntries: [SessionArchive.IndexEntry] = []
+
     private var monitorStates: [String: MonitorState] = [:]
     private var streamKind: StreamKind?
     private var findingCounter = 0
@@ -303,6 +305,7 @@ public actor ValidationSession {
 
     /// Mints a ``Finding`` from a rule violation, assigning a session-unique id and timestamp,
     /// records it, and emits it on the event stream.
+    /// Mints, records, and emits a finding with its resolved archive evidence.
     @discardableResult
     func record(_ violation: RuleViolation, resource: URL, refreshIndex: Int? = nil) -> Finding {
         findingCounter += 1
@@ -322,7 +325,14 @@ public actor ValidationSession {
         findings.append(finding)
         recordedSignatures.insert(Self.signature(violation, resource: resource))
         try? findingsLog?.append(finding)
-        continuation.yield(.finding(finding))
+        let evidence: EvidenceReference? = finding.severity == .info ? nil : EvidenceResolver().resolve(
+            finding,
+            aliases: aliasRegistry,
+            artifactIndex: evidenceEntries,
+            fallbackID: resource == inputURL ? "master" : "playlist_1"
+        )
+        continuation.yield(.finding(finding, evidence: evidence))
+
         return finding
     }
 

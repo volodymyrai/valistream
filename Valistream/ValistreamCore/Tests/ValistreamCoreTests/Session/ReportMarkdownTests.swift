@@ -41,8 +41,12 @@ struct ReportMarkdownTests {
     private func makeRegistry() -> AliasRegistry {
         var reg = AliasRegistry()
         reg.alias(for: masterURL, role: .master, attributes: [:])
-        reg.alias(for: videoURL,  role: .video,  attributes: ["RESOLUTION": "1920x1080"])
-        reg.alias(for: audioURL,  role: .audio,  attributes: ["LANGUAGE": "en"])
+        reg.alias(
+            for: videoURL,
+            role: .video,
+            attributes: ["RESOLUTION": "1920x1080", "CODECS": "avc1.640028"]
+        )
+        reg.alias(for: audioURL, role: .audio, attributes: ["LANGUAGE": "en"])
         return reg
     }
 
@@ -189,9 +193,9 @@ struct ReportMarkdownTests {
             Issue.record("No ## Legend section"); return
         }
         let legend = String(md[legendRange.lowerBound...])
-        #expect(legend.contains("video-1080p"))
+        #expect(legend.contains("1080p_avc1"))
         #expect(legend.contains(videoURL.absoluteString))
-        #expect(legend.contains("audio-en"))
+        #expect(legend.contains("audio_1"))
         #expect(legend.contains(audioURL.absoluteString))
     }
 }

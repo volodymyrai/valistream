@@ -1,6 +1,13 @@
 .DS_Store
 .build/
 */.build/
+DerivedData/
+*.swiftpm/
+Packages/
+*.tmp
+*.swp
+.vscode/
+.idea/
 *.pbxuser
 !default.pbxuser
 *.mode1v3

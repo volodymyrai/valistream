@@ -52,7 +52,7 @@ defines per-US automated checks. Each story's tests are written and MUST FAIL be
 
 **Purpose**: Confirm a green, FROZEN-compliant baseline before any change.
 
-- [ ] T001 Establish baseline: build the workspace via xcode-tools `BuildProject` and run the full suite
+- [X] T001 Establish baseline: build the workspace via xcode-tools `BuildProject` and run the full suite
       (`RunAllTests`) to confirm the FROZEN guards (`ReportJSONSchemaTests`, `RuleEngineTests`,
       conformance corpus, exit-code assertions) pass before edits — record the green baseline (SC-009).
 
@@ -65,19 +65,19 @@ here per plan (cross-cutting ID work that US1 needs).
 
 **⚠️ CRITICAL**: No user story work begins until this phase is complete.
 
-- [ ] T002 [P] Unit tests for `SnapshotID` in `ValistreamCore/Tests/ValistreamCoreTests/SnapshotIDTests.swift`:
+- [X] T002 [P] Unit tests for `SnapshotID` in `ValistreamCore/Tests/ValistreamCoreTests/SnapshotIDTests.swift`:
       `label(id:index:)` → `"<id>_<n>"`, parse helper round-trip, `_0` first fetch, VOD single-fetch.
       (FR-018a) — MUST FAIL first.
-- [ ] T003 Implement pure `SnapshotID` in `ValistreamCore/Sources/ValistreamCore/Session/SnapshotID.swift`:
+- [X] T003 Implement pure `SnapshotID` in `ValistreamCore/Sources/ValistreamCore/Session/SnapshotID.swift`:
       `label(id:index:) -> "\(id)_\(index)"` + parse helper (0-based per-playlist index). (FR-018a)
-- [ ] T004 [P] Unit tests for the reworked ID grammar in
+- [X] T004 [P] Unit tests for the reworked ID grammar in
       `ValistreamCore/Tests/ValistreamCoreTests/PlaylistAliasTests.swift`: `master` exact; video
       `<height>p_<codecs>` (`1080p_avc1`, `1080p_avc1-mp4a`); multi-codec fourCC trim (drop from first
       `.`) joined by `-`; slug (lowercase, non-alphanumeric runs → `_`); reserved `_` never inside a
       field value; deterministic numeric-suffix dedup; role+ordinal fallback; charset `[a-z0-9_-]`
       (filesystem-safe); determinism across runs + stability within a session. (FR-016–020, SC-006/007)
       — MUST FAIL first.
-- [ ] T005 Rework `AliasRegistry`/`PlaylistAlias` in
+- [X] T005 Rework `AliasRegistry`/`PlaylistAlias` in
       `ValistreamCore/Sources/ValistreamCore/Session/PlaylistAlias.swift` to the new grammar — master +
       video `<height>p_<codecs>`, codec fourCC trim + `-` join, slug helper, deterministic dedup suffix,
       role+ordinal fallback. **Keep the public surface** (`alias(for:role:attributes:)` idempotent per

@@ -45,14 +45,19 @@ public struct AliasRegistry: Sendable {
 
     /// Idempotent — the same `url` always returns the same alias for this registry instance.
     @discardableResult
-    public mutating func alias(for url: URL, role: AliasRole, attributes: [String: String] = [:]) -> PlaylistAlias {
+    public mutating func alias(
+        for url: URL,
+        role: AliasRole,
+        attributes: [String: String] = [:]
+    ) -> PlaylistAlias {
         if let existing = byURL[url] { return existing }
-        let candidate = descriptiveAlias(role: role, attributes: attributes).map { deduplicate($0) }
-            ?? indexedAlias(role: role)
+        let base = preferredAlias(role: role, attributes: attributes) ?? fallbackAlias(role: role)
+        let candidate = deduplicate(base)
         usedAliases.insert(candidate)
         let entry = PlaylistAlias(alias: candidate, url: url, role: role, attributes: attributes)
         byURL[url] = entry
         ordered.append(entry)
+
         return entry
     }
 
@@ -64,57 +69,87 @@ public struct AliasRegistry: Sendable {
     /// All registered aliases in registration order.
     public var all: [PlaylistAlias] { ordered }
 
+
+
     // MARK: - Private
 
-    private func descriptiveAlias(role: AliasRole, attributes: [String: String]) -> String? {
+    private func preferredAlias(role: AliasRole, attributes: [String: String]) -> String? {
         switch role {
-        case .video:     return resolutionAlias(prefix: "video", attributes: attributes)
-        case .iframe:    return resolutionAlias(prefix: "iframe", attributes: attributes)
-        case .audio:     return languageAlias(prefix: "audio", attributes: attributes)
-        case .subtitles: return languageAlias(prefix: "subs", attributes: attributes)
-        case .master, .unknown: return nil
+        case .master:
+            "master"
+        case .video:
+            videoAlias(attributes: attributes)
+        case .audio, .subtitles, .iframe, .unknown:
+            nil
         }
     }
 
-    // Derives "prefix-Np" from the RESOLUTION attribute (e.g. "1920x1080" yields "1080p"), or nil.
-    private func resolutionAlias(prefix: String, attributes: [String: String]) -> String? {
-        guard let res = attributes["RESOLUTION"] else { return nil }
-        let height = res.split(separator: "x").last.map(String.init) ?? res
-        return "\(prefix)-\(height)p"
-    }
+    private func videoAlias(attributes: [String: String]) -> String? {
+        guard
+            let resolution = attributes["RESOLUTION"],
+            let codecs = attributes["CODECS"],
+            let height = resolution
+                .split(whereSeparator: { $0 == "x" || $0 == "X" })
+                .last?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            height.isEmpty == false,
+            height.allSatisfy({ $0.isASCII && $0.isNumber })
+        else { return nil }
+        let codecFields = codecs.split(separator: ",", omittingEmptySubsequences: false).map { codec in
+            let fourCC = codec.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)[0]
 
-    // Derives "prefix-id" from the LANGUAGE (preferred) or NAME attribute, normalized, or nil.
-    private func languageAlias(prefix: String, attributes: [String: String]) -> String? {
-        guard let id = attributes["LANGUAGE"] ?? attributes["NAME"] else { return nil }
-        return "\(prefix)-\(normalized(id))"
-    }
-
-    private mutating func indexedAlias(role: AliasRole) -> String {
-        let prefix: String
-        switch role {
-        case .video:     prefix = "V"
-        case .audio:     prefix = "A"
-        case .subtitles: prefix = "S"
-        case .iframe:    prefix = "I"
-        case .master:    prefix = "M"
-        case .unknown:   prefix = "P"
+            return slug(String(fourCC)).replacing("_", with: "-")
         }
-        let n = roleCounters[role, default: 0] + 1
-        roleCounters[role] = n
-        return deduplicate("\(prefix)\(n)")
+        guard codecFields.allSatisfy({ $0.isEmpty == false }) else { return nil }
+
+        return "\(height)p_\(codecFields.joined(separator: "-"))"
+    }
+
+    private mutating func fallbackAlias(role: AliasRole) -> String {
+        let roleName = switch role {
+        case .video: "video"
+        case .audio: "audio"
+        case .subtitles: "subs"
+        case .iframe: "iframe"
+        case .master: "master"
+        case .unknown: "playlist"
+        }
+        let ordinal = roleCounters[role, default: 0] + 1
+        roleCounters[role] = ordinal
+
+        return "\(roleName)_\(ordinal)"
     }
 
     private func deduplicate(_ base: String) -> String {
         guard usedAliases.contains(base) else { return base }
-        var n = 2
-        while usedAliases.contains("\(base)-\(n)") { n += 1 }
-        return "\(base)-\(n)"
+        var suffix = 2
+        while usedAliases.contains("\(base)_\(suffix)") {
+            suffix += 1
+        }
+
+        return "\(base)_\(suffix)"
     }
 
-    private func normalized(_ s: String) -> String {
-        s.lowercased()
-            .split(whereSeparator: \.isWhitespace)
-            .joined(separator: "-")
+    private func slug(_ value: String) -> String {
+        var result = ""
+        var pendingSeparator = false
+        for scalar in value.lowercased().unicodeScalars {
+            let scalarValue = scalar.value
+            let isASCIIAlphanumeric = (UInt32(97)...UInt32(122)).contains(scalarValue)
+                || (UInt32(48)...UInt32(57)).contains(scalarValue)
+            if isASCIIAlphanumeric {
+                if pendingSeparator, result.isEmpty == false {
+                    result.append("_")
+                }
+                result.unicodeScalars.append(scalar)
+                pendingSeparator = false
+            }
+            else if result.isEmpty == false {
+                pendingSeparator = true
+            }
+        }
+
+        return result
     }
 }
 

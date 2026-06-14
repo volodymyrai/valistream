@@ -42,7 +42,7 @@ RFC8216.4.3.1.1, .4.3.4.2-BANDWIDTH, .4.3.4.2-URI, .4.3.4.1, .4.3.4.2.1, .4.3.3.
 - File was placed in wrong dir (one level up); fixed by moving to `Valistream/Valistream/ValistreamIntegrationTests/`.
 - `SessionConfig` param order: `outputDir` precedes `nonInteractive` — must match in all call sites.
 
-## US4 done (June 2026) — T030–T039 all [X]
+## US4 alias phase done (June 2026) — T030–T039 all [X]
 - `PlaylistAlias` + `AliasRegistry` in `Session/PlaylistAlias.swift`: deterministic stable aliases (`video-1080p`/`audio-en`/`subs-fr`/`iframe-720p`), indexed fallback (`V1`/`A1`/`S1`/`I1`/`M1`), dedup suffix (`video-1080p-2`).
 - `AliasRole` enum + `AliasRole(from: PlaylistRole)` bridge.
 - `SessionArchive.writeAtomically(_:to:)` `nonisolated` — temp-file + `FileManager.replaceItemAt` (FR-022).
@@ -51,7 +51,6 @@ RFC8216.4.3.1.1, .4.3.4.2-BANDWIDTH, .4.3.4.2-URI, .4.3.4.1, .4.3.4.2.1, .4.3.3.
 - Per-cycle atomic writes: `writeReport(interruption:)` called at end of each refresh loop in `monitorPlaylist()`.
 - Alias registration at discovery in `run()` via `makeAttributes(for:in:)` helper; `aliasInScope` threaded into `.activity` events.
 - **233 tests green** (RunAllTests, Xcode Valistream scheme).
-- T034 (`LiveReportFreshnessTests.swift`) file written to `Valistream/Valistream/Valistream/ValistreamIntegrationTests/`; needs adding to Xcode project target before it runs.
 
 ## US5 done (June 2026) — T040–T048 all [X]
 - `SelectionPromptPolicy` enum in `Session/SelectionPromptPolicy.swift`: `.prompt`/`.skip` with `from(isTTY:nonInteractive:selectionPatterns:)` factory — encodes FR-028 skip rule.
@@ -62,7 +61,18 @@ RFC8216.4.3.1.1, .4.3.4.2-BANDWIDTH, .4.3.4.2-URI, .4.3.4.1, .4.3.4.2.1, .4.3.3.
 - Unit: 7 new `SelectionPromptPolicyTests` in `Session/` — all skip conditions + default-selection behavior. `swift test`: **189 tests green**.
 - Integration: 3 new `PromptSkipTests` — prompt-closure not called, pattern filter applied, all playlists fetched. Xcode RunAllTests: **37 tests green**.
 
+## US4 selection-flag rework done (June 2026) — T031–T035 all [X]
+- `SelectionPromptPolicy` REWRITTEN: new cases `.prompt`/`.skip`/`.usageError`; new factory `from(isTTY:selectFlag:preselectPatterns:)` replacing `from(isTTY:nonInteractive:selectionPatterns:)`. Mutual exclusion now returns `.usageError` instead of requiring caller to detect.
+- `ValistreamCommand.swift` updated: `--all` @Flag REMOVED (now ArgumentParser rejects it as unknown option, exits 64/EX_USAGE on macOS); `--select` repurposed from `@Option String?` to `@Flag Bool` (interactive checklist request); `--preselect` `@Option String?` added (former `--select <pattern>` role); `--select`+`--preselect` → exit 2 with message; `--select` non-TTY → exit-2 not thrown, notice printed to stderr + all processed; `nonInteractive` no longer set from `all` flag.
+- `CommandConfiguration.version` bumped to `"0.3.0"`; `discussion` added with breaking-change migration table.
+- `MARKETING_VERSION = 0.3.0` in all configs in `Valistream.xcodeproj/project.pbxproj`.
+- `SelectionPromptPolicyTests.swift` fully rewritten to test new API + `.usageError` case.
+- New `SelectionMatrixTests.swift` in `ValistreamIntegrationTests/`: 8 tests (5 policy-seam + 3 session-level) — all green.
+- **230 unit tests green** (`swift test`); **8 SelectionMatrixTests + 3 PromptSkipTests green** (Xcode).
+- Exit-code limitation: `--all` exits 64 (ArgumentParser `EX_USAGE`) not 2 — this is ArgumentParser's macOS behavior for unknown options; spec text said "exit 2" meaning "usage error class", not the literal code 2.
+
 ## NOT done (remaining)
+- T036–T044: US5 pretty-JSON + polish (next worker).
 - T049: Manual quickstart against real streams (cannot run headless). FR-029 manual Ctrl-C prompt cancel test.
 
 ## Deviations / notes

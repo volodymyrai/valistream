@@ -18,8 +18,47 @@ struct ValistreamCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "valistream",
         abstract: "Validate and monitor HLS streams against RFC 8216 and Apple authoring rules.",
-        version: "0.2.0"
+        discussion: """
+            BREAKING CHANGES in 0.3.0 (selection flags)
+            ─────────────────────────────────────────────
+            --all                  → (removed; all renditions are now the default)
+            --select <pattern>     → --preselect <pattern>
+            --select (no value)    → --select  (now the interactive checklist)
+            """,
+        version: "0.3.0"
     )
+
+
+
+    // MARK: - Entry point
+
+    /// Custom entry point mapping ArgumentParser's usage/validation failure (`EX_USAGE` = 64 on
+    /// Darwin) onto the tool's FROZEN exit code 2 for usage errors (cli-interface.md). Clean exits
+    /// (`--help`/`--version`) still exit 0, and explicit `ExitCode`s thrown by `run()` (1/2/3/130)
+    /// pass through unchanged.
+    static func main() async {
+        do {
+            var command = try parseAsRoot(nil)
+            if var asyncCommand = command as? AsyncParsableCommand {
+                try await asyncCommand.run()
+            }
+            else {
+                try command.run()
+            }
+        }
+        catch {
+            let code = Self.exitCode(for: error)
+            if code == .success {
+                print(Self.fullMessage(for: error))
+                Foundation.exit(ExitCode.success.rawValue)
+            }
+            let message = Self.fullMessage(for: error)
+            if message.isEmpty == false {
+                FileHandle.standardError.write(Data((message + "\n").utf8))
+            }
+            Foundation.exit(code == .validationFailure ? 2 : code.rawValue)
+        }
+    }
 
 
 
@@ -37,13 +76,28 @@ struct ValistreamCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Live session time limit, e.g. 90s, 15m, 24h.")
     var limit: String?
 
-    @Option(name: .long, help: "Pre-select playlists to monitor (comma-separated patterns).")
-    var select: String?
+    /// Replaced by default-all behaviour — kept hidden so the parser rejects it as unknown (exit 2).
+    // NOTE: --all is intentionally absent so ArgumentParser exits 2 with "unknown option".
 
-    @Flag(name: .long, help: "Select all playlists, skipping the checklist prompt.")
-    var all = false
+    @Option(
+        name: .long,
+        help: ArgumentHelp(
+            "Pre-select a subset of renditions (comma-separated patterns matching ID, group, name, or URL).",
+            discussion: "Unattended/scriptable; no prompt is shown. Formerly --select <pattern> (≤0.2.0)."
+        )
+    )
+    var preselect: String?
 
-    @Flag(name: .long, help: "Never prompt; implies --all unless --select is given.")
+    @Flag(
+        name: .long,
+        help: ArgumentHelp(
+            "Open the interactive multi-select checklist with all renditions pre-selected.",
+            discussion: "Requires a TTY; on non-TTY falls back to processing all renditions. Cannot be combined with --preselect."
+        )
+    )
+    var select = false
+
+    @Flag(name: .long, help: "Never prompt; process all renditions without interaction.")
     var nonInteractive = false
 
     @Option(name: .long, help: "Parent directory for session folders. The archive arrives with a later increment.")
@@ -78,6 +132,26 @@ struct ValistreamCommand: AsyncParsableCommand {
         }
 
         let tty = isStdoutTTY()
+        let preselectPatterns = preselect.map { $0.split(separator: ",").map(String.init) }
+
+        // FR-025: --select and --preselect are mutually exclusive.
+        let promptPolicy = SelectionPromptPolicy.from(
+            isTTY: tty,
+            selectFlag: select,
+            preselectPatterns: preselectPatterns
+        )
+        if promptPolicy == .usageError {
+            FileHandle.standardError.write(Data("valistream: --select and --preselect are mutually exclusive.\n".utf8))
+            throw ExitCode(2)
+        }
+
+        // FR-025: --select on a non-TTY falls back to all renditions; print the documented notice.
+        if select, !tty {
+            FileHandle.standardError.write(Data(
+                "valistream: --select requires a TTY; processing all renditions.\n".utf8
+            ))
+        }
+
         let verbosity: Verbosity = quiet ? .quiet : (verbose ? .verbose : .normal)
         let mode = TerminalOutputMode(
             isTTY: tty,
@@ -93,22 +167,16 @@ struct ValistreamCommand: AsyncParsableCommand {
             bandwidthTolerance: tolerance / 100,
             timeLimit: limit.flatMap(Self.parseDuration),
             outputDir: URL(fileURLWithPath: outputDir),
-            nonInteractive: nonInteractive || all || !tty,
-            selectionPatterns: select.map { $0.split(separator: ",").map(String.init) },
+            nonInteractive: nonInteractive || !tty,
+            selectionPatterns: preselectPatterns,
             archiveEnabled: true,
             verboseEvents: verbose
         )
 
-        // FR-028: skip the prompt when non-TTY, --all/--non-interactive, or --select supplied.
-        let promptPolicy = SelectionPromptPolicy.from(
-            isTTY: tty,
-            nonInteractive: nonInteractive || all,
-            selectionPatterns: config.selectionPatterns
-        )
         let selectPlaylists: (@Sendable ([PlaylistSelection.Candidate]) async -> [PlaylistSelection.Candidate])? =
-            promptPolicy == .skip ? nil : { @Sendable candidates in
+            promptPolicy == .prompt ? { @Sendable candidates in
                 PromptberrySelection(candidates: candidates).run()
-            }
+            } : nil
 
         let session = ValidationSession(
             inputURL: inputURL,
@@ -201,7 +269,8 @@ struct ValistreamCommand: AsyncParsableCommand {
             if isFirst {
                 fputs("\nvalistream: shutting down gracefully… press Ctrl-C again to force exit.\n", stderr)
                 gracefulStop()
-            } else {
+            }
+            else {
                 _exit(130)
             }
         }

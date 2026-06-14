@@ -266,26 +266,26 @@ exit 2; `--select` non-TTY → all + notice.
 
 ### Tests for User Story 4 ⚠️ (write first, MUST FAIL before impl)
 
-- [ ] T031 [P] [US4] `SelectionPromptPolicy` unit tests in
+- [X] T031 [P] [US4] `SelectionPromptPolicy` unit tests in
       `ValistreamCore/Tests/ValistreamCoreTests/SelectionPromptPolicyTests.swift`: prompt iff `--select`
       + TTY; default (no flags) → no prompt even on TTY; `--preselect` → no prompt; `--select` +
       `--preselect` → usage error; `--select` non-TTY → fallback-to-all. (FR-021–025)
-- [ ] T032 [US4] Integration selection-matrix test in
+- [X] T032 [US4] Integration selection-matrix test in
       `Valistream/ValistreamIntegrationTests/SelectionMatrixTests.swift`: prompt closure NOT called for
       default/`--preselect`; pattern filter applied; `--all` → exit 2; `--select`+`--preselect` → exit 2;
       `--select` non-TTY → all + notice. (SC-010)
 
 ### Implementation for User Story 4
 
-- [ ] T033 [US4] Update selection flags in `Valistream/Valistream/ValistreamCommand.swift`: remove the
+- [X] T033 [US4] Update selection flags in `Valistream/Valistream/ValistreamCommand.swift`: remove the
       `--all` `@Flag` (now unknown → exit 2); add `--preselect <pattern>` `@Option` feeding
       `SessionConfig.selectionPatterns`; repurpose `--select` to a `@Flag` (interactive checklist,
       all pre-selected); `--select`+`--preselect` → usage error exit 2; `--select` non-TTY → fall back to
       all and print the documented notice. (FR-021–025)
-- [ ] T034 [US4] Rewire `SelectionPromptPolicy.from(...)` (in `ValistreamCore/Sources/ValistreamCore/Session/SelectionPromptPolicy.swift`) to key prompting off
+- [X] T034 [US4] Rewire `SelectionPromptPolicy.from(...)` (in `ValistreamCore/Sources/ValistreamCore/Session/SelectionPromptPolicy.swift`) to key prompting off
       the new `--select` flag + mutual exclusion (replacing the 002 pattern/`--all` rule) so the prompt
       appears **only** for `--select` on a TTY. (FR-021/024, D11)
-- [ ] T035 [US4] Set `MARKETING_VERSION = 0.3.0` in `Valistream/Valistream.xcodeproj` and update
+- [X] T035 [US4] Set `MARKETING_VERSION = 0.3.0` in `Valistream/Valistream.xcodeproj` and update
       `--version`/`--help` to document **every** option, calling the selection changes out as **breaking**
       with the migration mapping (`--all`→default; `--select <pattern>`→`--preselect`; `--select`→
       interactive checklist). (FR-003, D12)

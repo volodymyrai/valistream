@@ -96,17 +96,18 @@ producing many small artifact files; single stream per process.
 | II. Test-First | Plan provides test strategy; tasks generate tests first per story | ✅ unit + scripted-transport integration tests defined per US (Technical Context); tests default-on |
 | III. Simplicity | No unjustified projects/abstractions/dependencies | ✅ **No new dependency, project, or layer.** All new logic is pure + additive in existing core modules; presentation deltas in the existing CLI target. Reuses 002's Rainbow/Promptberry and the existing `termios` seam |
 | IV. Independent Increments | Story slices independently implementable/testable | ✅ US1 (evidence = MVP) → US2 (heartbeat) → US3 (IDs) → US4 (selection) → US5 (pretty JSON); each ships independently. Cross-cutting ID work that US1's archive naming needs is isolated in the Foundational phase |
-| V. Observability & Versioning | Structured output; semver + migration on breaking change | ⚠️ **Breaking CLI change** (`--all` removed; `--select` repurposed; `--select <pattern>` → `--preselect`). Constitution V's literal "breaking → MAJOR" is **not** taken; ships **0.3.0** (minor) with migration notes per the spec's recorded clarification. Justified in **Complexity Tracking** → accepted |
+| V. Observability & Versioning | Structured output; semver + migration on breaking change | ✅ **Breaking CLI change** (`--all` removed; `--select` repurposed; `--select <pattern>` → `--preselect`) ships **0.3.0** (minor) with migration notes (FR-003). **Compliant with Constitution V (v1.1.0)**: the `0.y.z` carve-out requires a pre-1.0 breaking change to bump at least MINOR and provide a migration path — both satisfied. No deviation |
 
-**Initial evaluation**: PASS with one justified deviation (versioning of a pre-1.0 breaking change; see
-Complexity Tracking). No new dependencies. No `NEEDS CLARIFICATION`.
+**Initial evaluation**: PASS — no deviations. The pre-1.0 breaking-change versioning is explicitly
+permitted by Constitution V's `0.y.z` carve-out (v1.1.0, 2026-06-14). No new dependencies. No
+`NEEDS CLARIFICATION`.
 
 **Post-design re-evaluation**: PASS — Phase 1 design introduces **no** new project, dependency, or core
 abstraction beyond pure additive types (`EvidenceReference`/resolver, trace events, a second JSON
 encoder constant, a monotonic counter field). The frozen JSON schema, rule set, and exit codes are
 untouched; the only structured-report change is whitespace (pretty-print) and artifact-index path
-*values* (FR-029) — both explicitly permitted. The version deviation is unchanged and remains the sole
-recorded item.
+*values* (FR-029) — both explicitly permitted. **No Constitution deviations remain**: the earlier pre-1.0
+versioning concern is resolved by Constitution V's `0.y.z` carve-out (v1.1.0).
 
 ## Project Structure
 
@@ -217,11 +218,14 @@ Binding instructions for the implementation phase (`/speckit-tasks` must surface
 
 ## Complexity Tracking
 
-> Justifies the single Constitution deviation: versioning a breaking CLI change as a MINOR bump.
+> No Constitution deviations remain; none require justification.
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|--------------------------------------|
-| Constitution V (breaking → MAJOR) is **not** applied; ships **0.3.0** (minor), not `1.0.0`, despite removing `--all` and repurposing `--select` | The tool is pre-1.0 (`0.y.z`); under SemVer the 0.x series carries no stable-API promise, so consumers are already warned. Migration notes are still provided (FR-003), satisfying the constitution's *intent* (don't surprise consumers) without a false 1.0 stability claim | Declaring `1.0.0` would assert API stability the tool does not yet intend and would force a separate constitution amendment for a literal MAJOR reading. Both add ceremony without protecting any consumer beyond the documented migration note. Recorded and accepted per the spec's 2026-06-14 clarification |
+**None.** A prior concern — versioning the breaking CLI change (`--all` removed, `--select` repurposed)
+as a MINOR `0.3.0` bump rather than `1.0.0` — was recorded here as a deviation under Constitution
+v1.0.0's literal "breaking → MAJOR" rule. Constitution **v1.1.0** (2026-06-14) added an explicit `0.y.z`
+carve-out to Principle V: a pre-1.0 breaking change MUST bump at least MINOR and ship a documented
+migration path (FR-003) — which this feature does. The versioning is therefore **compliant, not a
+deviation**, so no Complexity Tracking entry is needed.
 
 No new projects, layers, dependencies, or core abstractions beyond pure additive types; the domain core
 stays pure and dependency-free.

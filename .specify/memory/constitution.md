@@ -1,31 +1,38 @@
 <!--
 Sync Impact Report
 ==================
-Version change: (template, unversioned) → 1.0.0
-Rationale: Initial ratification of the Valistream constitution. All template
-placeholders resolved; five core principles adopted.
+Version change: 1.0.0 → 1.1.0 (MINOR — Principle V guidance materially expanded; no
+  principle removed or redefined).
+Last Amended: 2026-06-14 | Ratified: 2026-06-12 (unchanged).
 
-Modified principles: n/a (initial adoption)
-Added sections:
-- Core Principles (I–V)
-- Technology Constraints
-- Development Workflow
-- Governance
+Rationale: Amend Principle V (Observability and Versioning) with an explicit pre-1.0
+(`0.y.z`) versioning carve-out. Under SemVer the 0.y.z series carries no stable-API
+promise, so a backward-incompatible change ships as a MINOR bump with a documented
+migration path rather than forcing a premature 1.0.0. Resolves the constitution
+-alignment conflict flagged by /speckit-analyze for feature 003-monitoring-evidence
+(breaking CLI change shipping as 0.3.0).
 
-Removed sections: none (template comments replaced)
+Modified principles:
+- V. Observability and Versioning — the versioning clause is split by release series:
+  stable (>= 1.0.0 → breaking requires MAJOR) vs initial-development (0.y.z → breaking
+  requires at least MINOR + migration path). The migration-path requirement is retained
+  for both series; the observability (structured-output) clause is unchanged.
+
+Added sections: none
+Removed sections: none
 
 Templates requiring updates:
-- .specify/templates/plan-template.md      ✅ aligned (Constitution Check gate and
-  Complexity Tracking table already match Principles III and the workflow gates)
-- .specify/templates/spec-template.md      ✅ aligned (prioritized, independently
-  testable user stories and measurable success criteria match Principles I and IV)
-- .specify/templates/tasks-template.md     ✅ updated (test tasks now default-on per
-  Principle II; previously marked tests as OPTIONAL)
+- .specify/templates/plan-template.md      ✅ aligned (Constitution Check gate is
+  generic; no hardcoded "breaking → MAJOR" text to revise)
+- .specify/templates/spec-template.md      ✅ aligned (no versioning references)
+- .specify/templates/tasks-template.md     ✅ aligned (no versioning references)
 - .specify/templates/commands/*            n/a (directory not present; commands live
   in .claude/skills/)
 - CLAUDE.md                                ✅ no principle references to update
 
-Follow-up TODOs: none
+Follow-up TODOs: none. (This constitution document's own version is bumped
+  automatically. The Valistream product/tool version is a separate concern bumped
+  manually by the user and is governed by Principle V, not set in this file.)
 -->
 
 # Valistream Constitution
@@ -82,13 +89,26 @@ allow parallel work, and make scope cuts a reordering decision rather than a rew
 ### V. Observability and Versioning
 
 Errors and key operations MUST emit structured, greppable log output; silent failure
-is prohibited. Releases follow semantic versioning (MAJOR.MINOR.PATCH); backward
-incompatible changes require a MAJOR bump and a documented migration path before
-merge.
+is prohibited. Releases follow semantic versioning (MAJOR.MINOR.PATCH), and every
+backward-incompatible change MUST ship a documented migration path before merge.
+
+The version bump required by a backward-incompatible change depends on the release
+series:
+
+- **Stable series (>= 1.0.0)**: a backward-incompatible change MUST trigger a MAJOR
+  bump.
+- **Initial-development series (0.y.z)**: per SemVer, the 0.y.z series makes no
+  public-API stability promise, so a backward-incompatible change MUST bump at least
+  the MINOR (`0.y`) component — a MAJOR bump to `1.0.0` is NOT required — and MUST still
+  ship the documented migration path. Releasing `1.0.0` is a deliberate stability
+  declaration, never an automatic consequence of a breaking change.
 
 **Rationale**: A system that cannot explain its own behavior cannot be debugged in
 production, and consumers can only trust upgrades when version numbers carry a
-contract.
+contract. While a project is pre-1.0, the `0.y` line is itself the signal that the API
+may still move; forcing a premature `1.0.0` to satisfy a literal MAJOR rule would
+assert a stability the project has not chosen, so a migration-noted MINOR bump honors
+the contract's intent without a false stability claim.
 
 ## Technology Constraints
 
@@ -135,4 +155,4 @@ Where guidance conflicts, the constitution wins.
   gates derived from this document and must pass them before and after design. Each
   pull request review confirms the gates were honored.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-12 | **Last Amended**: 2026-06-12
+**Version**: 1.1.0 | **Ratified**: 2026-06-12 | **Last Amended**: 2026-06-14

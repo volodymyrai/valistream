@@ -1,13 +1,17 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/002-performance-ux/plan.md`
+`specs/003-monitoring-evidence/plan.md`
 
-Active feature: 002-performance-ux (Performance and UX)
-- Spec: specs/002-performance-ux/spec.md
-- Plan: specs/002-performance-ux/plan.md
+Active feature: 003-monitoring-evidence (Reliable Monitoring and Evidence)
+- Spec: specs/003-monitoring-evidence/spec.md
+- Plan: specs/003-monitoring-evidence/plan.md
 - Design: data-model.md, contracts/, research.md, quickstart.md (same directory)
-- Builds on: 001-hls-stream-validator (validation rules, report schema, exit codes are FROZEN)
+- Builds on: 001-hls-stream-validator + 002-performance-ux (validation rules, JSON report schema,
+  exit codes are FROZEN — incl. `playlists[].id`; reworks 002's alias scheme into the new ID scheme)
+- Scope: evidence files for every ERROR/WARN; monotonic input-resilient heartbeat; `<height>p_<codecs>`
+  IDs; default-all selection (`--all` removed, `--select`/`--preselect` reworked); pretty-printed JSON
+  files. No new dependency. Ships 0.3.0 (breaking CLI change, migration documented)
 - Stack: Swift 6 (strict concurrency), SwiftPM + Xcode workspace. Core `ValistreamCore` stays
   dependency-free; CLI target deps: swift-argument-parser + Rainbow (color) + Promptberry (prompts)
 - Build/test: xcode-tools `BuildProject`; `swift test` (unit) — pipe through `xcsift` for log analysis

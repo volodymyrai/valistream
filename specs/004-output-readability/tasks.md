@@ -372,8 +372,7 @@ conformance across everything changed.
 - US1 (P1): independent after Foundational — viable standalone MVP.
 - US2 (P2): report independent; quiet reuses US1 terminal styling.
 - US3 (P3): extends US1.
-- US4 (P4): documents/verifies the released binary; needs the version bump (T045/T046) and a coverage
-  measurement (T047).
+- US4 (P4): documents/verifies the released binary; needs the version verification (T045/T046).
 
 ### Key within-phase ordering
 
@@ -381,7 +380,7 @@ conformance across everything changed.
 - US1: T028/T029 → T030 → T031 (same file, sequential) → T032; T029 → T033.
 - US2: T039 → T040; T032 → T041.
 - US3: T032 → T044.
-- US4: T045/T046/T047/T048 → T049 → T050.
+- US4: T045/T046/T048 → T049 → T050.
 
 ---
 

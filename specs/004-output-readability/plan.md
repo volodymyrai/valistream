@@ -74,8 +74,8 @@ negligible overhead.
 - README examples are plain-text only; no committed credentials/expiring URLs (FR-033/034).
 
 **Scale/Scope**: ~7 CLI source files, 3 Core `Output/` formatters, the report builder, the playlist model
-(additive), plus new info/timeline/lifecycle models and the README. 38 functional requirements, 5
-prioritized user stories, 13 measurable success criteria.
+(additive), plus new info/timeline/lifecycle models and the README. 64 functional requirements (38 base +
+26 sub-requirements), 5 prioritized user stories, 19 measurable success criteria (13 base + 6 sub-criteria).
 
 ## Constitution Check
 

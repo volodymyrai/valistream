@@ -13,6 +13,9 @@
 		F12EB69F2FDDCEEE00884206 /* Promptberry in Frameworks */ = {isa = PBXBuildFile; productRef = F12EB69E2FDDCEEE00884206 /* Promptberry */; };
 		F15A62642FDC628C00460679 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = F15A62632FDC628C00460679 /* ValistreamCore */; };
 		F15A62722FDC647A00460679 /* ValistreamCore in Frameworks */ = {isa = PBXBuildFile; productRef = F15A62712FDC647A00460679 /* ValistreamCore */; };
+		F40000012FDF000100000001 /* TerminalWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40000012FDF000100000003 /* TerminalWriter.swift */; };
+		F40000012FDF000100000002 /* StatusRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40000012FDF000100000004 /* StatusRenderer.swift */; };
+		F40000012FDF000100000005 /* ProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40000012FDF000100000006 /* ProgressView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -30,6 +33,9 @@
 /* Begin PBXFileReference section */
 		F15A62492FDC4E6300460679 /* valistream */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = valistream; sourceTree = BUILT_PRODUCTS_DIR; };
 		F15A62692FDC645F00460679 /* ValistreamIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ValistreamIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F40000012FDF000100000003 /* TerminalWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Valistream/TerminalWriter.swift; sourceTree = "<group>"; };
+		F40000012FDF000100000004 /* StatusRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Valistream/StatusRenderer.swift; sourceTree = "<group>"; };
+		F40000012FDF000100000006 /* ProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Valistream/ProgressView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -214,6 +220,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F40000012FDF000100000001 /* TerminalWriter.swift in Sources */,
+				F40000012FDF000100000002 /* StatusRenderer.swift in Sources */,
+				F40000012FDF000100000005 /* ProgressView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

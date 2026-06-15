@@ -51,9 +51,115 @@ struct NonInteractiveOutputTests {
             noColorEnv: false,
             noColorFlag: false,
             termIsDumb: false,
+            environment: ["LANG": "C"],
             verbosity: .normal
         )
         #expect(mode.colorEnabled == false)
+    }
+
+    @Test("plain output has ASCII markers no control bytes and wraps without truncation", arguments: [80, 120])
+    func plainOutputWrapsWithoutTruncation(width: Int) {
+        let recorder = OutputRecorder()
+        let mode = TerminalOutputMode(
+            isTTY: false,
+            noColorEnv: true,
+            noColorFlag: true,
+            termIsDumb: true,
+            environment: ["LANG": "C"],
+            verbosity: .normal
+        )
+        let writer = TerminalWriter(
+            mode: mode,
+            terminalWidth: width,
+            output: recorder.writeStandardOutput,
+            errorOutput: recorder.writeStandardError
+        )
+        let message = "Warning video_1080p_42: " + String(repeating: "segment duration exceeds target ", count: 5)
+
+        writer.writeFinding(
+            at: Date(timeIntervalSince1970: 1_750_000_000),
+            severity: .warning,
+            message: message,
+            evidence: "playlists/video_1080p/video_1080p_42.m3u8",
+            timeZone: .gmt
+        )
+
+        let output = recorder.standardOutput
+        #expect(output.contains("[WARN]"))
+        #expect(output.contains("\u{1B}") == false)
+        #expect(output.contains("\r") == false)
+        #expect(output.contains("video_1080p_42"))
+        #expect(output.contains("segment duration exceeds target"))
+        #expect(output.contains("playlists/video_1080p/video_1080p_42.m3u8"))
+        #expect(output.split(separator: "\n").allSatisfy { $0.count <= width })
+    }
+
+    @Test(
+        "each styling gate removes ANSI and cursor control",
+        arguments: [
+            GateCase(isTTY: false, noColorEnv: false, noColorFlag: false, termIsDumb: false),
+            GateCase(isTTY: true, noColorEnv: true, noColorFlag: false, termIsDumb: false),
+            GateCase(isTTY: true, noColorEnv: false, noColorFlag: true, termIsDumb: false),
+            GateCase(isTTY: true, noColorEnv: false, noColorFlag: false, termIsDumb: true),
+        ]
+    )
+    func stylingGateRemovesControlBytes(gate: GateCase) {
+        let recorder = OutputRecorder()
+        let mode = TerminalOutputMode(
+            isTTY: gate.isTTY,
+            noColorEnv: gate.noColorEnv,
+            noColorFlag: gate.noColorFlag,
+            termIsDumb: gate.termIsDumb,
+            environment: ["LANG": "C"],
+            verbosity: .normal
+        )
+        let writer = TerminalWriter(
+            mode: mode,
+            output: recorder.writeStandardOutput,
+            errorOutput: recorder.writeStandardError
+        )
+
+        writer.writeFinding(
+            at: Date(timeIntervalSince1970: 1_750_000_000),
+            severity: .warning,
+            message: "Warning video_1: target duration changed.",
+            evidence: nil,
+            timeZone: .gmt
+        )
+
+        #expect(recorder.standardOutput.contains("\u{1B}") == false)
+        #expect(recorder.standardOutput.contains("\r") == false)
+        #expect(recorder.standardOutput.contains("[WARN]"))
+    }
+
+    @Test("styled finding tints the whole line and keeps a text marker")
+    func styledFindingUsesWholeLineTint() {
+        let recorder = OutputRecorder()
+        let mode = TerminalOutputMode(
+            isTTY: true,
+            noColorEnv: false,
+            noColorFlag: false,
+            termIsDumb: false,
+            environment: ["LANG": "en_US.UTF-8"],
+            verbosity: .normal
+        )
+        let writer = TerminalWriter(
+            mode: mode,
+            output: recorder.writeStandardOutput,
+            errorOutput: recorder.writeStandardError
+        )
+
+        writer.writeFinding(
+            at: Date(timeIntervalSince1970: 1_750_000_000),
+            severity: .warning,
+            message: "Warning video_1: target duration changed.",
+            evidence: nil,
+            timeZone: .gmt
+        )
+
+        #expect(recorder.standardOutput.hasPrefix("\u{1B}[33m["))
+        #expect(recorder.standardOutput.contains("⚠ WARN"))
+        #expect(recorder.standardOutput.contains("\u{1B}[0m\n"))
     }
 
 
@@ -104,5 +210,12 @@ struct NonInteractiveOutputTests {
             seg1.ts
             #EXT-X-ENDLIST
             """
+    }
+
+    struct GateCase: Sendable {
+        let isTTY: Bool
+        let noColorEnv: Bool
+        let noColorFlag: Bool
+        let termIsDumb: Bool
     }
 }

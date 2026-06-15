@@ -148,59 +148,59 @@ verbose mode. Re-run with `NO_COLOR`/`--no-color`/`TERM=dumb`/redirect for zero 
 
 ### Tests for User Story 1 (write first; must FAIL before impl) ⚠️
 
-- [ ] T021 [P] [US1] `PresentationRoleTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/PresentationRoleTests.swift`
+- [X] T021 [P] [US1] `PresentationRoleTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/PresentationRoleTests.swift`
       — each role maps to the restrained 8/16 ANSI palette; color is never the sole signal (T14/T16,
       FR-009/009a/010).
-- [ ] T022 [P] [US1] `TerminalOutputModeGlyphTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/TerminalOutputModeTests.swift`
+- [X] T022 [P] [US1] `TerminalOutputModeGlyphTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/TerminalOutputModeTests.swift`
       — `GlyphStyle` UTF-8 detection: `.unicode` for UTF-8 `LANG`/`LC_*`, `.ascii` for `TERM=dumb`/non-UTF-8
       (T18/T19, research D5).
-- [ ] T023 [P] [US1] `BlankLineGroupingTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/BlankLineGroupingTests.swift`
+- [X] T023 [P] [US1] `BlankLineGroupingTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/BlankLineGroupingTests.swift`
       — exactly one blank line between blocks, none within; consecutive blanks collapse; no leading/trailing
       run; a refresh result+findings+evidence stays one contiguous block; info-block field groups separated
       by one blank (T8–T13, FR-004/005/017j).
-- [ ] T024 [P] [US1] `TimestampedOutputTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/TimestampedOutputTests.swift`
+- [X] T024 [P] [US1] `TimestampedOutputTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/TimestampedOutputTests.swift`
       — every human-readable terminal line carries `[HH:mm:ss.SSS]`; the value is the occurrence instant
       (render delay/reorder does not change it) (T1–T4, FR-008a/c, SC-003a/c).
-- [ ] T025 [P] [US1] `PlaylistInfoBlockTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/PlaylistInfoBlockTests.swift`
+- [X] T025 [P] [US1] `PlaylistInfoBlockTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/PlaylistInfoBlockTests.swift`
       — one info block per playlist at first load in normal + verbose, never repeated, omitted in quiet;
       each media block states its own protection and mixed protected/unprotected renditions are
       independent (T30–T34, SC-012/013).
-- [ ] T026 [P] [US1] `NormalSessionReadabilityTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/NormalSessionReadabilityTests.swift`
+- [X] T026 [P] [US1] `NormalSessionReadabilityTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/NormalSessionReadabilityTests.swift`
       — a warning-free refresh yields exactly one persistent timestamped result (SC-002); a warning's
       summary+findings+evidence is one adjacent block (T11); the final summary states outcome, counts,
       elapsed time, and report path (T36); the heartbeat does not split/duplicate/blank-pad blocks (T35);
       every normal/quiet result, notice, lifecycle, and summary line leads with an outcome word from the
       FR-007a allow-set and contains no banned internal term (FR-007/007a).
-- [ ] T027 [P] [US1] Extend `Valistream/Valistream/ValistreamIntegrationTests/NonInteractiveOutputTests.swift`
+- [X] T027 [P] [US1] Extend `Valistream/Valistream/ValistreamIntegrationTests/NonInteractiveOutputTests.swift`
       — `NO_COLOR`/`--no-color`/`TERM=dumb`/redirect produce zero styling or cursor-control bytes with
       ASCII markers; at 80- and 120-column widths no severity/identity/finding/evidence is silently
       truncated and continuation lines stay with their block (T17–T21, SC-005/006).
 
 ### Implementation for User Story 1
 
-- [ ] T028 [US1] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Output/PresentationRole.swift`
+- [X] T028 [US1] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Output/PresentationRole.swift`
       — closed role enum (`heading`/`identifier`/`success`/`progress`/`metadata`/`warning`/`error`/
       `evidencePath`/`summary`) + restrained ANSI mapping (research D4).
-- [ ] T029 [US1] Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Output/TerminalOutputMode.swift`
+- [X] T029 [US1] Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Output/TerminalOutputMode.swift`
       — add `glyphStyle: GlyphStyle` and UTF-8 capability detection alongside the existing TTY/NO_COLOR/dumb
       inputs (research D5; depends T022 expectations).
-- [ ] T030 [US1] Extend `Valistream/Valistream/Valistream/TerminalWriter.swift` — whole-line severity tint
+- [X] T030 [US1] Extend `Valistream/Valistream/Valistream/TerminalWriter.swift` — whole-line severity tint
       for result/finding lines, token-scoped role styling for structural context, monochrome Unicode markers
       with ASCII fallback, long-line wrapping with recognizable continuation indent, and styling fully gated
       off for non-interactive/`--json`/`NO_COLOR`/`--no-color`/`TERM=dumb` (T14–T21, C10; depends T028, T029).
-- [ ] T031 [US1] Extend `Valistream/Valistream/Valistream/TerminalWriter.swift` — block-emitting writer that
+- [X] T031 [US1] Extend `Valistream/Valistream/Valistream/TerminalWriter.swift` — block-emitting writer that
       enforces the blank-line grammar (one blank between blocks, none within, collapse consecutive,
       suppress leading/trailing) and is disabled for the machine stream (T8–T13; depends T030, same file —
       sequential).
-- [ ] T032 [US1] Extend `Valistream/Valistream/Valistream/StatusRenderer.swift` — timestamp every normal
+- [X] T032 [US1] Extend `Valistream/Valistream/Valistream/StatusRenderer.swift` — timestamp every normal
       message; group output into blocks; emit one persistent result per refresh (move request/comparison/
       storage/validation detail to verbose trace); render the `PlaylistInformation` block once in
       normal+verbose via `PlaylistInfoFormatter` field groups; render lifecycle notices; render the
       prominent final summary (T36) and corrective failure messages (T37) (depends T015, T019, T028–T031;
       FR-008/017/017a/i, SC-002).
-- [ ] T033 [US1] Extend `Valistream/Valistream/Valistream/ValistreamCommand.swift` — construct
+- [X] T033 [US1] Extend `Valistream/Valistream/Valistream/ValistreamCommand.swift` — construct
       `TerminalOutputMode` with the detected `glyphStyle` and thread it to the renderer (depends T029).
-- [ ] T034 [US1] Verify/adjust `Valistream/Valistream/Valistream/ProgressView.swift` — the in-place
+- [X] T034 [US1] Verify/adjust `Valistream/Valistream/Valistream/ProgressView.swift` — the in-place
       heartbeat stays transient and non-competing and injects no persistent blank lines (T35, FR-024).
 
 **Checkpoint**: US1 is fully functional and independently testable — the live terminal is readable. MVP.

@@ -48,7 +48,7 @@ struct ValistreamCommand: AsyncParsableCommand {
             }
             let message = Self.fullMessage(for: error)
             if message.isEmpty == false {
-                FileHandle.standardError.write(Data((message + "\n").utf8))
+                Self.writeError(message)
             }
             Foundation.exit(code == .validationFailure ? 2 : code.rawValue)
         }
@@ -116,46 +116,41 @@ struct ValistreamCommand: AsyncParsableCommand {
     mutating func run() async throws {
         guard let inputURL = URL(string: url), let scheme = inputURL.scheme,
               scheme == "http" || scheme == "https" else {
-            FileHandle.standardError.write(Data("valistream: invalid URL '\(url)' (expected http/https).\n".utf8))
+            Self.writeError("Error: invalid URL '\(url)'; use an HTTP or HTTPS playlist URL.")
             throw ExitCode(2)
         }
 
         guard !(quiet && verbose) else {
-            FileHandle.standardError.write(Data("valistream: --quiet and --verbose are mutually exclusive.\n".utf8))
+            Self.writeError("Error: --quiet and --verbose cannot be used together; choose one output mode.")
             throw ExitCode(2)
         }
 
         let tty = isStdoutTTY()
+        let environment = ProcessInfo.processInfo.environment
         let preselectPatterns = preselect.map { $0.split(separator: ",").map(String.init) }
-
-        // FR-025: --select and --preselect are mutually exclusive.
         let promptPolicy = SelectionPromptPolicy.from(
             isTTY: tty,
             selectFlag: select,
             preselectPatterns: preselectPatterns
         )
         if promptPolicy == .usageError {
-            FileHandle.standardError.write(Data("valistream: --select and --preselect are mutually exclusive.\n".utf8))
+            Self.writeError("Error: --select and --preselect cannot be combined; choose one selection mode.")
             throw ExitCode(2)
         }
-
-        // FR-025: --select on a non-TTY falls back to all renditions; print the documented notice.
         if select, !tty {
-            FileHandle.standardError.write(Data(
-                "valistream: --select requires a TTY; processing all renditions.\n".utf8
-            ))
+            Self.writeError("Selected all renditions because --select requires an interactive terminal.")
         }
 
         let verbosity: Verbosity = quiet ? .quiet : (verbose ? .verbose : .normal)
         let mode = TerminalOutputMode(
             isTTY: tty,
-            noColorEnv: ProcessInfo.processInfo.environment["NO_COLOR"] != nil,
+            noColorEnv: environment["NO_COLOR"] != nil,
             noColorFlag: noColor,
-            termIsDumb: ProcessInfo.processInfo.environment["TERM"] == "dumb",
+            termIsDumb: environment["TERM"] == "dumb",
+            environment: environment,
             verbosity: verbosity
         )
-        let writer = TerminalWriter(mode: mode)
-
+        let writer = TerminalWriter(mode: mode, terminalWidth: ProgressView.terminalWidth())
         let config = SessionConfig(
             segmentMode: segments,
             bandwidthTolerance: tolerance / 100,
@@ -166,65 +161,73 @@ struct ValistreamCommand: AsyncParsableCommand {
             archiveEnabled: true,
             verboseEvents: verbose
         )
-
         let selectPlaylists: (@Sendable ([PlaylistSelection.Candidate]) async -> [PlaylistSelection.Candidate])? =
             promptPolicy == .prompt ? { @Sendable candidates in
                 PromptberrySelection(candidates: candidates).run()
             } : nil
-
         let session = ValidationSession(
             inputURL: inputURL,
             config: config,
             fetcher: URLSessionStreamFetcher(),
             selectPlaylists: selectPlaylists
         )
-        let renderer = StatusRenderer(writer: writer, json: json)
-        let events = session.events
-
+        let started = ContinuousClock.now
         let runTask = Task { await session.run() }
         let signalSources = Self.installSignalHandlers(session: session, runTask: runTask)
         defer { signalSources.forEach { $0.cancel() } }
 
-        // US2/T025: suppress terminal echo during live monitoring to prevent stray keystrokes
-        // from corrupting the in-place heartbeat region (D8, FR-014, SC-004).
         let inputGuard = LiveInputGuard(isTTY: tty)
         let savedTermios = inputGuard.activate()
         defer { inputGuard.deactivate(savedTermios) }
 
-        // T017: dedicated render task — processes events concurrently with the session (FR-002).
-        let renderTask = Task {
+        let usesJSON = json
+        let renderTask = Task { () -> StatusRenderer in
+            var renderer = StatusRenderer(writer: writer, json: usesJSON)
             var progressView = ProgressView(mode: mode)
-            for await event in events {
-                switch event {
-                case .sessionFolderResolved(let folder):
-                    // FR-017: print absolute session folder path before any fetch.
-                    writer.writeStatus("Output: \(folder.path(percentEncoded: false))")
-                case .activity(let p):
-                    progressView.render(p)
-                default:
-                    progressView.clearLine()
+            if usesJSON {
+                for await event in session.events {
                     renderer.render(event)
                 }
             }
+            else {
+                for await timestampedEvent in session.timestampedEvents {
+                    if case .activity(let progress) = timestampedEvent.event {
+                        progressView.render(progress, at: timestampedEvent.at)
+                    }
+                    else {
+                        progressView.clearLine()
+                        renderer.render(timestampedEvent)
+                    }
+                }
+            }
             progressView.clearLine()
+            return renderer
         }
         await runTask.value
-        await renderTask.value
+        var renderer = await renderTask.value
 
         let findings = await session.recordedFindings
         let state = await session.state
         let endReason = await session.endReason
         let sessionFolder = await session.sessionFolderURL?.path(percentEncoded: false)
-        renderer.renderSummary(findings: findings, state: state, sessionFolder: sessionFolder)
+        let reportPath = sessionFolder.map { URL(filePath: $0).appending(path: "report.md").path(percentEncoded: false) }
+        renderer.renderSummary(
+            findings: findings,
+            state: state,
+            sessionFolder: sessionFolder,
+            elapsed: started.duration(to: .now),
+            playlistCount: renderer.playlistCount,
+            reportPath: reportPath,
+            at: .now
+        )
 
-        // Graceful interrupt (SIGINT/SIGTERM) — summary still produced (FR-015).
         if endReason == .gracefulStop {
             throw ExitCode(130)
         }
         if state == .failed {
             let message = await session.failureMessage
             if let message {
-                FileHandle.standardError.write(Data("valistream: \(message)\n".utf8))
+                Self.writeError("Failed: \(message)")
                 throw ExitCode(2)
             }
             throw ExitCode(3)
@@ -261,7 +264,7 @@ struct ValistreamCommand: AsyncParsableCommand {
                 return true
             }
             if isFirst {
-                fputs("\nvalistream: shutting down gracefully… press Ctrl-C again to force exit.\n", stderr)
+                Self.writeError("Interrupted: stopping gracefully; press Ctrl-C again to force exit.")
                 gracefulStop()
             }
             else {
@@ -280,6 +283,14 @@ struct ValistreamCommand: AsyncParsableCommand {
     }
 
     /// Parses a duration string such as `90s`, `15m`, or `24h`.
+    private static func writeError(_ message: String, at: Date = .now) {
+        let timestamp = TerminalTimestampFormatter.format(at)
+        let output = message.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { "\(timestamp) \($0)" }
+            .joined(separator: "\n")
+        FileHandle.standardError.write(Data((output + "\n").utf8))
+    }
+
     private static func parseDuration(_ raw: String) -> Duration? {
         guard let unit = raw.last, let value = Double(raw.dropLast()) else { return nil }
         switch unit {

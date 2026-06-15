@@ -56,6 +56,10 @@ private extension PlaylistBuilder {
         var isIFramesOnly = false
         var hasEndList = false
         var hasEncryptionKeys = false
+        var keyMethod: String?
+        var keyFormat: String?
+        var sessionKeyMethod: String?
+        var sessionKeyFormat: String?
 
         var sawStreamInf = false
         var sawIFrameStreamInf = false
@@ -86,8 +90,19 @@ private extension PlaylistBuilder {
             case "#EXT-X-ENDLIST":
                 hasEndList = true
             case "#EXT-X-KEY":
-                if let attributes, AttributeList(parsing: attributes)["METHOD"] != "NONE" {
+                if let attributes {
+                    let key = AttributeList(parsing: attributes)
+                    keyMethod = key["METHOD"]
+                    keyFormat = key["KEYFORMAT"]
+                }
+                if let keyMethod, keyMethod != "NONE" {
                     hasEncryptionKeys = true
+                }
+            case "#EXT-X-SESSION-KEY":
+                if let attributes {
+                    let key = AttributeList(parsing: attributes)
+                    sessionKeyMethod = key["METHOD"]
+                    sessionKeyFormat = key["KEYFORMAT"]
                 }
             case "#EXT-X-STREAM-INF":
                 sawStreamInf = true
@@ -169,7 +184,9 @@ private extension PlaylistBuilder {
                     iFrameStreams: iFrameStreams,
                     renditions: renditions,
                     version: version,
-                    hasIndependentSegments: hasIndependentSegments
+                    hasIndependentSegments: hasIndependentSegments,
+                    sessionKeyMethod: sessionKeyMethod,
+                    sessionKeyFormat: sessionKeyFormat
                 ))
             }
             return .media(MediaPlaylist(
@@ -182,7 +199,9 @@ private extension PlaylistBuilder {
                 isIFramesOnly: isIFramesOnly,
                 version: version,
                 hasIndependentSegments: hasIndependentSegments,
-                hasEncryptionKeys: hasEncryptionKeys
+                hasEncryptionKeys: hasEncryptionKeys,
+                keyMethod: keyMethod,
+                keyFormat: keyFormat
             ))
         }
     }

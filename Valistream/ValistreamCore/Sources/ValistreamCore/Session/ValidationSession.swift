@@ -78,6 +78,21 @@ public actor ValidationSession {
 
     // MARK: - Lifecycle
 
+/// Occurrence-stamped events for human-readable renderers and reports.
+    public nonisolated let timestampedEvents: AsyncStream<TimestampedEvent>
+
+    let timestampedContinuation: AsyncStream<TimestampedEvent>.Continuation
+    var timelineSequence = 0
+    var loadedPlaylistInfo: Set<String> = []
+    var previousRoster: [RosterEntry]?
+    var playlistInformation: [PlaylistInformation] = []
+    var recordedTimelineEvents: [RecordedTimelineEvent] = []
+
+    struct RecordedTimelineEvent: Sendable {
+        let sequence: Int
+        let timestampedEvent: TimestampedEvent
+    }
+
     public init(
         inputURL: URL,
         config: SessionConfig,
@@ -101,6 +116,7 @@ public actor ValidationSession {
             AppleAuthoringRules(),
         ])
         (self.events, self.continuation) = AsyncStream.makeStream()
+        (self.timestampedEvents, self.timestampedContinuation) = AsyncStream.makeStream()
     }
 
 
@@ -152,7 +168,7 @@ public actor ValidationSession {
                     findingsLog = try? FindingsLog(folder: folder)
                     diskWatcher = DiskSpaceWatcher(volumeURL: folder)
                 }
-                continuation.yield(.sessionFolderResolved(location.sessionFolder))
+                emit(.sessionFolderResolved(location.sessionFolder))
             } catch let err as OutputLocationError {
                 failureMessage = err.description
                 setState(.failed)
@@ -164,7 +180,6 @@ public actor ValidationSession {
             }
         }
 
-        // Graceful stop requested before any fetch (spec §Edge Cases).
         if stopRequested {
             await finish(reason: .gracefulStop)
             return
@@ -189,24 +204,23 @@ public actor ValidationSession {
         var mediaLoads: [LoadedPlaylist] = []
         if case .master(let master) = rootPlaylist {
             references = loader.mediaReferences(in: master)
-            // T039: register master alias + all media playlist aliases at discovery time (FR-026).
             aliasRegistry.alias(for: inputURL, role: .master, attributes: [:])
             for reference in references {
                 let attrs = makeAttributes(for: reference, in: master)
                 aliasRegistry.alias(for: reference.url, role: AliasRole(from: reference.role), attributes: attrs)
             }
 
-            // US2/T021: emit roster after all IDs are assigned, before any media fetch (FR-011).
             emitRoster(masterURL: inputURL, references: references)
+            let masterID = aliasRegistry.alias(for: inputURL)?.alias ?? "master"
+            emitPlaylistInformation(playlistID: masterID, playlist: rootPlaylist)
 
             let activityLabel = "validating media playlists"
             for (index, reference) in references.enumerated() {
-                // T022: check stop between playlist loads so a partial report can be written.
                 if stopRequested {
                     await finish(reason: .gracefulStop)
                     return
                 }
-                continuation.yield(.activity(ActivityProgress(
+                emit(.activity(ActivityProgress(
                     activity: activityLabel,
                     completed: index,
                     total: references.count,
@@ -215,26 +229,37 @@ public actor ValidationSession {
                 let load = await loader.load(reference.url, role: reference.role)
                 let playlistID = "\(reference.role.rawValue)-\(index)"
                 await archiveFetch(load.result, requestURL: reference.url, playlistID: playlistID)
-                if load.playlist != nil {
+                if let playlist = load.playlist {
                     trackPlaylist(playlistID, kind: .media, role: reference.role, url: reference.url, selected: true, refreshCount: 1)
+                    let presentationID = aliasRegistry.alias(for: reference.url)?.alias ?? playlistID
+                    let loadedKind = playlist.media.map(classifier.classify)
+                    emitPlaylistInformation(
+                        playlistID: presentationID,
+                        playlist: playlist,
+                        streamKind: loadedKind
+                    )
                 }
                 mediaLoads.append(load)
-                continuation.yield(.activity(ActivityProgress(
+                emit(.activity(ActivityProgress(
                     activity: activityLabel,
                     completed: index + 1,
                     total: references.count,
                     aliasInScope: aliasRegistry.alias(for: reference.url)?.alias
                 )))
             }
-        }
-        else {
-            // T039: register direct media playlist alias.
+        } else {
             aliasRegistry.alias(for: inputURL, role: .video, attributes: [:])
             mediaLoads.append(rootLoad)
             trackPlaylist("media", kind: .media, role: .variant, url: inputURL, selected: true, refreshCount: 1)
-            // US2/T021: emit single-playlist roster before any monitor fetch.
             emitRoster(masterURL: nil, references: [])
-            continuation.yield(.activity(ActivityProgress(activity: "validating media playlist", completed: 1, total: 1)))
+            let presentationID = aliasRegistry.alias(for: inputURL)?.alias ?? "media"
+            let loadedKind = rootPlaylist.media.map(classifier.classify)
+            emitPlaylistInformation(
+                playlistID: presentationID,
+                playlist: rootPlaylist,
+                streamKind: loadedKind
+            )
+            emit(.activity(ActivityProgress(activity: "validating media playlist", completed: 1, total: 1)))
         }
 
         let representativeMedia = mediaLoads.lazy.compactMap { $0.playlist?.media }.first
@@ -260,7 +285,6 @@ public actor ValidationSession {
             }
         }
 
-        // VOD never monitors — it has ended by definition (FR-005).
         guard kind != .vod else {
             await finish(reason: .completed)
             return
@@ -301,18 +325,43 @@ public actor ValidationSession {
 
     /// Transitions the lifecycle and emits a `stateChanged` event. Invalid transitions are ignored
     /// defensively so a late abort/finish cannot crash the engine.
+func emit(_ event: SessionEvent, at occurrence: Date? = nil) {
+        let timestampedEvent = TimestampedEvent(at: occurrence ?? now(), event: event)
+        continuation.yield(event)
+        timestampedContinuation.yield(timestampedEvent)
+
+        guard isTimelineEligible(event) else { return }
+        timelineSequence += 1
+        recordedTimelineEvents.append(RecordedTimelineEvent(
+            sequence: timelineSequence,
+            timestampedEvent: timestampedEvent
+        ))
+    }
+
+    private func isTimelineEligible(_ event: SessionEvent) -> Bool {
+        switch event {
+        case .finding, .playlistLifecycle:
+            true
+        case .stateChanged(let state):
+            state.isTerminal
+        default:
+            false
+        }
+    }
+
     func setState(_ target: SessionState) {
         guard (try? lifecycle.transition(to: target)) != nil else { return }
-        continuation.yield(.stateChanged(target))
+        emit(.stateChanged(target))
         if target.isTerminal {
             continuation.finish()
+            timestampedContinuation.finish()
         }
     }
 
     /// Records the stream classification and emits it.
     func setClassification(_ kind: StreamKind) {
         streamKind = kind
-        continuation.yield(.streamClassified(kind))
+        emit(.streamClassified(kind))
     }
 
     /// Mints a ``Finding`` from a rule violation, assigning a session-unique id and timestamp,
@@ -343,7 +392,7 @@ public actor ValidationSession {
             artifactIndex: evidenceEntries,
             fallbackID: resource == inputURL ? "master" : "playlist_1"
         )
-        continuation.yield(.finding(finding, evidence: evidence))
+        emit(.finding(finding, evidence: evidence), at: finding.observedAt)
 
         return finding
     }
@@ -358,9 +407,29 @@ public actor ValidationSession {
 
     /// Updates a playlist's monitor state and emits the change (de-duplicating no-op updates).
     func setMonitorState(_ playlistID: String, _ state: MonitorState) {
-        guard monitorStates[playlistID] != state else { return }
+        let previousState = monitorStates[playlistID]
+        guard previousState != state else { return }
         monitorStates[playlistID] = state
-        continuation.yield(.monitorStateChanged(playlistID: playlistID, state: state))
+
+        let occurrence = now()
+        emit(.monitorStateChanged(playlistID: playlistID, state: state), at: occurrence)
+
+        let lifecycleKind: PlaylistLifecycleEvent.Kind?
+        if state == .staleError {
+            lifecycleKind = .unavailable
+        } else if previousState == .staleError, state == .monitoring {
+            lifecycleKind = .recovered
+        } else {
+            lifecycleKind = nil
+        }
+
+        if let lifecycleKind {
+            emit(.playlistLifecycle(PlaylistLifecycleEvent(
+                playlistID: playlistID,
+                at: occurrence,
+                kind: lifecycleKind
+            )), at: occurrence)
+        }
     }
 
     /// The fetcher this session uses (for the flow tasks wired by US1+).
@@ -489,10 +558,42 @@ public actor ValidationSession {
             entries.append(RosterEntry(id: id, url: reference.url, role: reference.role.rawValue))
         }
         if entries.isEmpty {
-            // Direct media: the single playlist is the input URL
             let id = aliasRegistry.alias(for: inputURL)?.alias ?? "media"
             entries.append(RosterEntry(id: id, url: inputURL, role: "video"))
         }
-        continuation.yield(.rosterReady(entries))
+
+        let occurrence = now()
+        if let previousRoster {
+            let previousByURL = Dictionary(uniqueKeysWithValues: previousRoster.map { ($0.url, $0) })
+            let currentByURL = Dictionary(uniqueKeysWithValues: entries.map { ($0.url, $0) })
+
+            for entry in previousRoster where currentByURL[entry.url] == nil {
+                emit(.playlistLifecycle(PlaylistLifecycleEvent(
+                    playlistID: entry.id,
+                    at: occurrence,
+                    kind: .removed
+                )), at: occurrence)
+            }
+            for entry in entries {
+                guard let previous = previousByURL[entry.url] else {
+                    emit(.playlistLifecycle(PlaylistLifecycleEvent(
+                        playlistID: entry.id,
+                        at: occurrence,
+                        kind: .added
+                    )), at: occurrence)
+                    continue
+                }
+                if previous.id != entry.id {
+                    emit(.playlistLifecycle(PlaylistLifecycleEvent(
+                        playlistID: entry.id,
+                        at: occurrence,
+                        kind: .identityChanged
+                    )), at: occurrence)
+                }
+            }
+        }
+
+        previousRoster = entries
+        emit(.rosterReady(entries), at: occurrence)
     }
 }

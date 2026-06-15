@@ -136,6 +136,14 @@ public enum SessionEvent: Sendable {
     /// Fired once after the output directory is resolved and writable-verified, before any fetch (FR-017).
     case sessionFolderResolved(URL)
 
+    // MARK: - Human-readable output additions
+
+    /// Fired once for each playlist after its first successful load.
+    case playlistInformation(PlaylistInformation)
+
+    /// Fired when a playlist's availability or roster identity changes.
+    case playlistLifecycle(PlaylistLifecycleEvent)
+
     // MARK: - US2 additions (additive — no JSON/exit impact)
 
     /// Fired once after all playlist IDs are assigned and before the first fetch (FR-011).
@@ -149,6 +157,21 @@ public enum SessionEvent: Sendable {
 }
 
 /// Why a session finalized — drives report labeling and the CLI shutdown notice (US2, data-model).
+/// An event paired with the instant at which it occurred.
+public struct TimestampedEvent: Sendable {
+    /// The occurrence instant captured by the session clock.
+    public let at: Date
+
+    /// The raw session event.
+    public let event: SessionEvent
+
+    /// Creates an occurrence-stamped event.
+    public init(at: Date, event: SessionEvent) {
+        self.at = at
+        self.event = event
+    }
+}
+
 public enum SessionEndReason: Sendable {
     case completed
     case gracefulStop

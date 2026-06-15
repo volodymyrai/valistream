@@ -49,18 +49,15 @@ struct StatusRenderer: Sendable {
             renderFinding(finding, evidence: evidence)
 
         case .rosterReady(let entries):
-            // Normal+ tier: print the roster before any fetch (FR-011, SC-003).
             renderRoster(entries)
 
         case .refreshCompleted(let playlistID, let index, let errors, let warnings):
-            // Normal+ tier: per-refresh status line (FR-015a).
             renderRefreshCompleted(playlistID: playlistID, index: index, errors: errors, warnings: warnings)
 
         case .trace(let traceEvent):
-            // Verbose-only tier (D9, FR-015b, SC-005).
             renderTrace(traceEvent)
 
-        case .activity, .sessionFolderResolved:
+        case .activity, .sessionFolderResolved, .playlistInformation, .playlistLifecycle:
             break
         }
     }

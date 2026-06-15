@@ -31,11 +31,6 @@ extension ValidationSession {
         kind: StreamKind,
         deadline: Date?
     ) async {
-        // Live status, evidence, archive paths, and traces must all show the same presentation
-        // ID used by the roster, legend, and report (FR-013-ID). Resolve it once from the registry
-        // (populated at discovery in `run()`); fall back to the internal candidate ID only when the
-        // playlist was never registered. Without this, monitoring lines leak the candidate ID
-        // (`variant-0`, `audio-5`) instead of the presentation ID (`1080p_avc1`, `audio_en`).
         let presentationID = aliasRegistry.alias(for: candidate.url)?.alias ?? candidate.id
 
         guard var previous = initial?.playlist?.media else {
@@ -56,16 +51,14 @@ extension ValidationSession {
             let scheduler = RefreshScheduler(targetDuration: targetDuration)
             let delay = refreshIndex == 0 ? scheduler.initialDelay : scheduler.nextDelay(didChange: lastChanged)
 
-            // Verbose: emit refresh-scheduled trace before sleeping (FR-015b).
             if config.verboseEvents {
                 let delaySecs = Double(delay.components.seconds) + Double(delay.components.attoseconds) / 1e18
-                continuation.yield(.trace(.refreshScheduled(playlistID: presentationID, delaySeconds: delaySecs)))
+                emit(.trace(.refreshScheduled(playlistID: presentationID, delaySeconds: delaySecs)))
             }
 
             do {
                 try await sleep(delay)
-            }
-            catch {
+            } catch {
                 break
             }
             if stopRequested { break }
@@ -74,20 +67,18 @@ extension ValidationSession {
             refreshIndex += 1
             let snapshotLabel = SnapshotID.label(id: presentationID, index: refreshIndex)
 
-            // Verbose: fetch intent trace (FR-015b).
             if config.verboseEvents {
-                continuation.yield(.trace(.fetchIntent(snapshotID: snapshotLabel)))
+                emit(.trace(.fetchIntent(snapshotID: snapshotLabel)))
             }
 
             let fetchStart = now()
             let load = await loader.load(candidate.url, role: candidate.role)
 
-            // Verbose: fetch result trace.
             if config.verboseEvents {
                 let durationMs = Int(now().timeIntervalSince(fetchStart) * 1_000)
                 let httpStatus = load.result.metadata.httpStatus ?? 0
                 let bytes = load.result.body.count
-                continuation.yield(.trace(.fetchResult(
+                emit(.trace(.fetchResult(
                     snapshotID: snapshotLabel,
                     httpStatus: httpStatus,
                     durationMs: durationMs,
@@ -97,19 +88,17 @@ extension ValidationSession {
 
             await archiveFetch(load.result, requestURL: load.url, playlistID: presentationID)
 
-            // Verbose: continuity comparison trace (emitted before checking for violations).
             if config.verboseEvents, load.playlist?.media != nil {
                 let olderLabel = SnapshotID.label(id: presentationID, index: refreshIndex - 1)
-                continuation.yield(.trace(.continuityCompare(
+                emit(.trace(.continuityCompare(
                     olderSnapshotID: olderLabel,
                     newerSnapshotID: snapshotLabel
                 )))
             }
 
-            // Verbose: stored trace (after archiveFetch which writes the file).
             if config.verboseEvents, load.result.outcome == .success {
                 let archivePath = "playlists/\(presentationID)/\(snapshotLabel).m3u8"
-                continuation.yield(.trace(.stored(snapshotID: snapshotLabel, archivePath: archivePath)))
+                emit(.trace(.stored(snapshotID: snapshotLabel, archivePath: archivePath)))
             }
 
             incrementRefreshCount(presentationID)
@@ -117,8 +106,6 @@ extension ValidationSession {
                 record(violation, resource: candidate.url, refreshIndex: refreshIndex)
             }
             var changed = false
-
-            // Count findings produced by this refresh cycle (for .refreshCompleted).
             let findingsBefore = recordedFindings.count
 
             if let media = load.playlist?.media {
@@ -134,19 +121,17 @@ extension ValidationSession {
                 }
                 previous = media
 
-                // Verbose: per-playlist validation outcome.
                 if config.verboseEvents {
                     let newFindings = recordedFindings.count - findingsBefore
                     if newFindings == 0 {
-                        continuation.yield(.trace(.validationPlaylistOK(snapshotID: snapshotLabel)))
-                    }
-                    else {
+                        emit(.trace(.validationPlaylistOK(snapshotID: snapshotLabel)))
+                    } else {
                         let errors = recordedFindings.suffix(newFindings).count { $0.severity == .error }
-                        let warns = recordedFindings.suffix(newFindings).count { $0.severity == .warning }
-                        continuation.yield(.trace(.validationPlaylistFail(
+                        let warnings = recordedFindings.suffix(newFindings).count { $0.severity == .warning }
+                        emit(.trace(.validationPlaylistFail(
                             snapshotID: snapshotLabel,
                             errorCount: errors,
-                            warnCount: warns
+                            warnCount: warnings
                         )))
                     }
                 }
@@ -156,27 +141,24 @@ extension ValidationSession {
                 evaluateStaleness(candidate, since: lastChangedAt, target: targetDuration, refreshIndex: refreshIndex)
             }
 
-            // Emit per-refresh status line (normal+ tier, FR-015a, T021).
             let findingsThisRefresh = recordedFindings.count - findingsBefore
             let errorsThisRefresh = recordedFindings.suffix(findingsThisRefresh).count { $0.severity == .error }
-            let warnsThisRefresh = recordedFindings.suffix(findingsThisRefresh).count { $0.severity == .warning }
-            continuation.yield(.refreshCompleted(
+            let warningsThisRefresh = recordedFindings.suffix(findingsThisRefresh).count { $0.severity == .warning }
+            emit(.refreshCompleted(
                 playlistID: presentationID,
                 index: refreshIndex,
                 errors: errorsThisRefresh,
-                warnings: warnsThisRefresh
+                warnings: warningsThisRefresh
             ))
 
-            let totalRefreshes = sessionRefreshTotal
-            continuation.yield(.activity(ActivityProgress(
+            emit(.activity(ActivityProgress(
                 activity: "monitoring live",
                 completed: refreshIndex,
                 refreshes: refreshIndex,
                 aliasInScope: presentationID,
-                sessionRefreshTotal: totalRefreshes
+                sessionRefreshTotal: sessionRefreshTotal
             )))
 
-            // T038: write both reports atomically after each refresh cycle (FR-021, FR-022).
             await writeReport(interruption: nil)
         }
 

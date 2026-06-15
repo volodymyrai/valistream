@@ -186,19 +186,25 @@ public struct MasterPlaylist: Sendable, Equatable {
     public let renditions: [Rendition]
     public let version: Int?
     public let hasIndependentSegments: Bool
+    public let sessionKeyMethod: String?
+    public let sessionKeyFormat: String?
 
     public init(
         variants: [VariantStream],
         iFrameStreams: [IFrameStream],
         renditions: [Rendition],
         version: Int?,
-        hasIndependentSegments: Bool
+        hasIndependentSegments: Bool,
+        sessionKeyMethod: String? = nil,
+        sessionKeyFormat: String? = nil
     ) {
         self.variants = variants
         self.iFrameStreams = iFrameStreams
         self.renditions = renditions
         self.version = version
         self.hasIndependentSegments = hasIndependentSegments
+        self.sessionKeyMethod = sessionKeyMethod
+        self.sessionKeyFormat = sessionKeyFormat
     }
 }
 
@@ -214,6 +220,8 @@ public struct MediaPlaylist: Sendable, Equatable {
     public let version: Int?
     public let hasIndependentSegments: Bool
     public let hasEncryptionKeys: Bool
+    public let keyMethod: String?
+    public let keyFormat: String?
 
     public init(
         targetDuration: Double?,
@@ -225,7 +233,9 @@ public struct MediaPlaylist: Sendable, Equatable {
         isIFramesOnly: Bool,
         version: Int?,
         hasIndependentSegments: Bool,
-        hasEncryptionKeys: Bool
+        hasEncryptionKeys: Bool,
+        keyMethod: String? = nil,
+        keyFormat: String? = nil
     ) {
         self.targetDuration = targetDuration
         self.mediaSequence = mediaSequence
@@ -237,5 +247,7 @@ public struct MediaPlaylist: Sendable, Equatable {
         self.version = version
         self.hasIndependentSegments = hasIndependentSegments
         self.hasEncryptionKeys = hasEncryptionKeys
+        self.keyMethod = keyMethod
+        self.keyFormat = keyFormat
     }
 }

@@ -127,4 +127,19 @@ extension ValidationSession {
             try? archive.writeAtomically(mdData, to: folder.appending(path: "report.md"))
         }
     }
+
+    func emitPlaylistInformation(
+        playlistID: String,
+        playlist: Playlist,
+        streamKind: StreamKind? = nil
+    ) {
+        guard loadedPlaylistInfo.insert(playlistID).inserted else { return }
+        let information = PlaylistInformation.build(
+            playlistID: playlistID,
+            playlist: playlist,
+            streamKind: streamKind
+        )
+        playlistInformation.append(information)
+        emit(.playlistInformation(information))
+    }
 }

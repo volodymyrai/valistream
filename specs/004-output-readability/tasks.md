@@ -45,11 +45,11 @@ written early as a regression net for the frozen machine surfaces (FR-002/FR-028
 
 **Purpose**: confirm a green starting point and a verifiable coverage source before any change lands.
 
-- [ ] T001 Establish the frozen-surface baseline: `BuildProject` (workspace) green, then run the 003 guard
+- [X] T001 Establish the frozen-surface baseline: `BuildProject` (workspace) green, then run the 003 guard
       suite (`ReportJSONSchemaTests`, RuleEngine/conformance, exit-code checks) via xcode-tools
       `RunSomeTests` against `Valistream/TestPlans/Valistream.xctestplan`; record the all-green baseline
       (anchor for compatibility V1, SC-011).
-- [ ] T002 [P] Confirm `codeCoverage` is enabled for `Valistream` + `ValistreamCore` in
+- [X] T002 [P] Confirm `codeCoverage` is enabled for `Valistream` + `ValistreamCore` in
       `Valistream/TestPlans/Valistream.xctestplan` (kept for local diagnostics only; the README coverage
       badge is dropped per FR-029a — no verifiable durable source, so no badge value is captured).
 
@@ -66,66 +66,66 @@ the session recording/emission plumbing. Plus the compatibility regression net.
 
 ### Tests for Foundational (write first; must FAIL before impl) ⚠️
 
-- [ ] T003 [P] `TimestampFormatterTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/TimestampFormatterTests.swift`
+- [X] T003 [P] `TimestampFormatterTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/TimestampFormatterTests.swift`
       — terminal `[HH:mm:ss.SSS]` 24h local and report ISO-8601 local with milliseconds + numeric UTC
       offset; same instant correlates within 1 ms; render delay/reorder never re-stamps (T1–T4, R5/R6,
       SC-003b/c).
-- [ ] T004 [P] `PlaylistProtectionTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Playlist/PlaylistProtectionTests.swift`
+- [X] T004 [P] `PlaylistProtectionTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Playlist/PlaylistProtectionTests.swift`
       — classify `None` / `Encrypted (AES-128)` / `DRM (<key format>)` from declared key method/keyformat
       (FR-017b, SC-013).
-- [ ] T005 [P] `PlaylistInformationTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Playlist/PlaylistInformationTests.swift`
+- [X] T005 [P] `PlaylistInformationTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Playlist/PlaylistInformationTests.swift`
       — master fields (FR-017e), media fields (FR-017f) with no master-derived values (FR-017g),
       first-snapshot median + min–max segment durations (FR-017d), missing-value `Unknown` vs
       `Not declared` and `Mixed` (FR-017h).
-- [ ] T006 [P] `PlaylistInfoFormatterTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/PlaylistInfoFormatterTests.swift`
+- [X] T006 [P] `PlaylistInfoFormatterTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Output/PlaylistInfoFormatterTests.swift`
       — surface-neutral ordered field groups are identical content for terminal and report (FR-017c,
       SC-012) and grouped coherently (FR-017j).
-- [ ] T007 [P] `PlaylistLifecycleEventTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/PlaylistLifecycleEventTests.swift`
+- [X] T007 [P] `PlaylistLifecycleEventTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/PlaylistLifecycleEventTests.swift`
       — `unavailable`/`recovered`/`added`/`removed`/`identityChanged` carry playlist ID + occurrence
       instant (FR-025c, research D10).
-- [ ] T008 [P] `CompatibilityFreezeTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/CompatibilityFreezeTests.swift`
+- [X] T008 [P] `CompatibilityFreezeTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/CompatibilityFreezeTests.swift`
       — for a scripted session, `--json` stream, `FindingsLog` JSONL, JSON report schema v1, and
       `.meta.json` are structurally identical before/after 004 with no timestamps/blank-line grammar/ANSI
       in any machine surface; reuse 003 guards (C1–C10, V1/V2, SC-011).
 
 ### Implementation for Foundational
 
-- [ ] T009 Add the `TimestampedEvent { at: Date; event: SessionEvent }` envelope and additive
+- [X] T009 Add the `TimestampedEvent { at: Date; event: SessionEvent }` envelope and additive
       `SessionEvent` cases `.playlistInformation(PlaylistInformation)` and
       `.playlistLifecycle(PlaylistLifecycleEvent)` in `Valistream/ValistreamCore/Sources/ValistreamCore/Session/SessionConfig.swift`;
       keep all existing case shapes unchanged (research D1, data-model §1).
-- [ ] T010 [P] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Output/TimestampFormatter.swift`
+- [X] T010 [P] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Output/TimestampFormatter.swift`
       — pure terminal `[HH:mm:ss.SSS]` and report ISO-8601(+offset) formatters (research D2).
-- [ ] T011 [P] Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistModel.swift`
+- [X] T011 [P] Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistModel.swift`
       — additive read-only `keyMethod`/`keyFormat` on `MediaPlaylist` and
       `sessionKeyMethod`/`sessionKeyFormat` on `MasterPlaylist` (no rule/schema/exit change; data-model §5,
       research D8).
-- [ ] T012 Populate the additive key metadata from already-tokenized `EXT-X-KEY` / `EXT-X-SESSION-KEY`
+- [X] T012 Populate the additive key metadata from already-tokenized `EXT-X-KEY` / `EXT-X-SESSION-KEY`
       `METHOD`+`KEYFORMAT` in `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistBuilder.swift`
       (depends T011).
-- [ ] T013 [P] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistProtection.swift`
+- [X] T013 [P] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistProtection.swift`
       — pure `classify(...)` → `Protection` enum (`none`/`encryptedAES128`/`drm(keyFormat:)`) (depends T011,
       research D8).
-- [ ] T014 Create `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistInformation.swift`
+- [X] T014 Create `Valistream/ValistreamCore/Sources/ValistreamCore/Playlist/PlaylistInformation.swift`
       — `PlaylistInformation` + `MasterInfo`/`MediaInfo` value types and the pure builder from
       `PlaylistModel` + first loaded snapshot (depends T011–T013, research D7).
-- [ ] T015 Create `Valistream/ValistreamCore/Sources/ValistreamCore/Output/PlaylistInfoFormatter.swift`
+- [X] T015 Create `Valistream/ValistreamCore/Sources/ValistreamCore/Output/PlaylistInfoFormatter.swift`
       — surface-neutral ordered label/value field groups (single content source guaranteeing FR-017c
       parity; terminal/markdown styling added by US1/US2) (depends T014).
-- [ ] T016 [P] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Session/PlaylistLifecycleEvent.swift`
+- [X] T016 [P] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Session/PlaylistLifecycleEvent.swift`
       — value + `Kind` enum (research D10).
-- [ ] T017 Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift`
+- [X] T017 Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift`
       — stamp every emitted event with its occurrence `Date` from the injected `now` clock; add
       `timelineSequence` counter, `loadedPlaylistInfo: Set<String>`, and `previousRoster` recording state
       (depends T009, research D1).
-- [ ] T018 Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession+Monitoring.swift`
+- [X] T018 Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession+Monitoring.swift`
       — emit `PlaylistLifecycleEvent`: `unavailable`/`recovered` from monitor/staleness signals,
       `added`/`removed`/`identityChanged` from roster diffs across refreshes (depends T016, T017).
-- [ ] T019 Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession+Reporting.swift`
+- [X] T019 Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession+Reporting.swift`
       — emit `playlistInformation` exactly once per playlist at first load (guarded by `loadedPlaylistInfo`,
       FR-017a/d); record timeline-eligible events (findings, failures, lifecycle, shutdown) with monotonic
       `sequence` (depends T014, T017, FR-025c–h).
-- [ ] T020 Confirm the machine-stream gate: the `--json`/non-human path serializes only the raw frozen
+- [X] T020 Confirm the machine-stream gate: the `--json`/non-human path serializes only the raw frozen
       events (no envelope timestamp, no additive human-only cases) in
       `Valistream/ValistreamCore/Sources/ValistreamCore/Session/SessionConfig.swift` and the emission path
       — makes T008 pass (C7/C10; depends T009, T017).

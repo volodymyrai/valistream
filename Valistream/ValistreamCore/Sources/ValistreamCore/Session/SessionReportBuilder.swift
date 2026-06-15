@@ -189,12 +189,15 @@ public struct SessionReportBuilder: Sendable {
     ///   - aliasRegistry: The presentation ID registry populated during discovery.
     ///   - artifactIndex: The archive entries used to resolve captured bodies by URL and refresh index.
     /// - Returns: A Markdown report whose evidence paths are inline code spans.
+    ///   - evidenceByFindingID: Evidence captured when each finding was emitted, used when provenance is not inferable from the finding alone.
+
     public func buildMarkdown(
         session: SessionSnapshot,
         playlists: [PlaylistInfo],
         findings: [Finding],
         aliasRegistry: AliasRegistry = AliasRegistry(),
         artifactIndex: [SessionArchive.IndexEntry] = [],
+        evidenceByFindingID: [String: EvidenceReference] = [:],
         timeline: IncidentTimeline = IncidentTimeline(events: []),
         playlistInformation: [PlaylistInformation] = [],
         timeZone: TimeZone = .current
@@ -306,7 +309,7 @@ public struct SessionReportBuilder: Sendable {
                         md += "- Observed: \(ReportTimestampFormatter.format(finding.observedAt, timeZone: timeZone))\n"
                         md += "- Message: \(finding.message)\n"
                         if severity != .info {
-                            let reference = resolver.resolve(
+                            let reference = evidenceByFindingID[finding.id] ?? resolver.resolve(
                                 finding,
                                 aliases: aliasRegistry,
                                 artifactIndex: artifactIndex,

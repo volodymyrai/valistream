@@ -260,6 +260,41 @@ struct ReportMarkdownTests {
         #expect(md.contains("`playlists/1080p_avc1/1080p_avc1_2.m3u8`"))
     }
 
+
+    @Test("staleness report preserves baseline and confirming evidence")
+    func stalenessReportPreservesBaselineAndConfirmingEvidence() {
+        let staleness = Finding(
+            id: "f-stale", ruleId: "TOOL.staleness", source: .tool,
+            severity: .warning, category: .continuity, resource: videoURL,
+            location: nil, refreshIndex: 84, observedAt: start,
+            message: "Playlist is stale", context: [:]
+        )
+        let artifactIndex = [82, 83, 84].map { index in
+            SessionArchive.IndexEntry(
+                requestId: "r\(index)",
+                url: videoURL,
+                bodyPath: "playlists/1080p_avc1/1080p_avc1_\(index).m3u8",
+                metaPath: "playlists/1080p_avc1/1080p_avc1_\(index).meta.json"
+            )
+        }
+        let evidence = EvidenceReference.pair(
+            older: "playlists/1080p_avc1/1080p_avc1_82.m3u8",
+            newer: "playlists/1080p_avc1/1080p_avc1_84.m3u8"
+        )
+        let md = SessionReportBuilder().buildMarkdown(
+            session: makeSnapshot(),
+            playlists: makePlaylists(),
+            findings: [staleness],
+            aliasRegistry: makeRegistry(),
+            artifactIndex: artifactIndex,
+            evidenceByFindingID: [staleness.id: evidence]
+        )
+
+        #expect(md.contains("`playlists/1080p_avc1/1080p_avc1_82.m3u8`"))
+        #expect(md.contains("`playlists/1080p_avc1/1080p_avc1_84.m3u8`"))
+        #expect(md.contains("1080p_avc1_83.m3u8") == false)
+    }
+
     @Test("missing evidence names the ID without exposing the URL")
     func missingEvidenceNamesID() {
         let finding = Finding(

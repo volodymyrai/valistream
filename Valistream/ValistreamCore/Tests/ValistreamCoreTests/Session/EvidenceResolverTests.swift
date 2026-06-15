@@ -86,6 +86,22 @@ struct EvidenceResolverTests {
         ))
     }
 
+
+    @Test("staleness resolves the changed baseline and threshold-confirming snapshot")
+    func stalenessResolvesBaselineAndConfirmingSnapshot() {
+        let reference = EvidenceResolver().resolve(
+            makeFinding(category: .continuity, refreshIndex: 84),
+            aliases: makeRegistry(),
+            artifactIndex: [82, 83, 84].map { entry(url: playlistURL, index: $0) },
+            baselineRefreshIndex: 82
+        )
+
+        #expect(reference == .pair(
+            older: "playlists/1080p_avc1/1080p_avc1_82.m3u8",
+            newer: "playlists/1080p_avc1/1080p_avc1_84.m3u8"
+        ))
+    }
+
     @Test("missing body resolves unavailable using the registered ID")
     func missingBodyResolvesUnavailable() {
         var registry = AliasRegistry()

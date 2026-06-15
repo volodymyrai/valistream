@@ -47,11 +47,14 @@ A pure resolver maps a `Finding` → `EvidenceReference`:
 | Finding | Result | Rendered |
 |---------|--------|----------|
 | single-snapshot (any non-continuity ERROR/WARN) | `.single("playlists/<id>/<id>_<n>.m3u8")` | one path |
-| continuity (`category == .continuity`) | `.pair("…/<id>_<n-1>.m3u8", "…/<id>_<n>.m3u8")` | two consecutive paths (FR-006) |
+| pairwise continuity (`category == .continuity`, except staleness) | `.pair("…/<id>_<n-1>.m3u8", "…/<id>_<n>.m3u8")` | previous and current paths (FR-006) |
+| staleness (`ruleId == TOOL.staleness`) | `.pair("…/<id>_<b>.m3u8", "…/<id>_<n>.m3u8")` | last changed baseline `<b>` and threshold-confirming snapshot `<n>` |
 | producing fetch failed (no captured body) | `.unavailable(<id>)` | `no body captured for <id>` — ID/label, never a URL (FR-009) |
 
 - **Join key is the finding's `resource` URL**, matched against the archive's `IndexEntry.url`; `<n>` is
   the finding's `refreshIndex`. The path is deterministic from `<id>` + `<n>`.
+- Staleness keeps the same two-reference contract, but its first operand is the last snapshot that
+  changed, not necessarily `<n-1>`. Intermediate unchanged retries are not evidence operands.
 - **`<id>` ≠ `playlists[].id`** (the frozen JSON field). Never use `playlists[].id` for the join.
 - **Unavailable placeholder ID** (when failure prevented ID assignment): `master` for the master,
   else role+ordinal (FR-020) — so SC-003 holds unconditionally.

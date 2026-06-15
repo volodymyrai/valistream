@@ -85,11 +85,14 @@ public struct EvidenceResolver: Sendable {
     ///   - artifactIndex: The archive entries captured for the session.
     ///   - fallbackID: The deterministic ID used when neither registry nor archive can identify the playlist.
     /// - Returns: The available evidence path or paths, or an unavailable reference naming the playlist ID.
+    /// - Parameter baselineRefreshIndex: The last changed snapshot index for staleness evidence; `nil` keeps consecutive continuity evidence.
+
     public func resolve(
         _ finding: Finding,
         aliases: AliasRegistry,
         artifactIndex: [SessionArchive.IndexEntry],
-        fallbackID: String = "master"
+        fallbackID: String = "master",
+        baselineRefreshIndex: Int? = nil
     ) -> EvidenceReference {
         let entries = artifactIndex.filter { $0.url == finding.resource }
         let id = aliases.alias(for: finding.resource)?.alias
@@ -97,7 +100,12 @@ public struct EvidenceResolver: Sendable {
             ?? fallbackID
         let refreshIndex = max(finding.refreshIndex ?? 0, 0)
         if finding.category == .continuity {
-            let older = refreshIndex > 0 ? bodyPath(at: refreshIndex - 1, in: entries) : nil
+            let older: String?
+            if let baselineRefreshIndex {
+                older = bodyPath(at: max(baselineRefreshIndex, 0), in: entries)
+            } else {
+                older = refreshIndex > 0 ? bodyPath(at: refreshIndex - 1, in: entries) : nil
+            }
             let newer = bodyPath(at: refreshIndex, in: entries)
             if older == nil, newer == nil {
                 return .unavailable(id: id)

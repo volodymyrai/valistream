@@ -14,12 +14,31 @@ struct LiveFaultScenarioTests {
     private let media = URL(string: "https://ex.com/live.m3u8")!
 
     @Test("a stalling playlist warns then escalates to an error", .timeLimit(.minutes(1)))
-    func stallingPlaylistWarnsThenErrors() async {
-        let harness = LiveSessionHarness(input: media)
+    func stallingPlaylistWarnsThenErrors() async throws {
+        let outputDir = FileManager.default.temporaryDirectory
+            .appending(path: "LiveFaultScenarioTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: outputDir) }
+
+        let harness = LiveSessionHarness(
+            input: media,
+            config: SessionConfig(
+                outputDir: outputDir,
+                nonInteractive: true,
+                archiveEnabled: true
+            )
+        )
         // Only the initial window is ever served; the playlist never changes again.
         harness.fetcher.timeline(media, [
             .init(at: .seconds(0), reply: .body(LivePlaylists.window(mediaSequence: 0, segments: ["s0.ts", "s1.ts", "s2.ts"]))),
         ])
+        let eventTask = Task {
+            var events: [SessionEvent] = []
+            for await timestampedEvent in harness.session.timestampedEvents {
+                events.append(timestampedEvent.event)
+            }
+            return events
+        }
         harness.start()
 
         for _ in 0..<6 {
@@ -34,6 +53,26 @@ struct LiveFaultScenarioTests {
         #expect(monitorStates["video_1"] == .staleError)
 
         await harness.abortAndFinish()
+        let events = await eventTask.value
+        let warningEvidence = events.compactMap { event -> EvidenceReference? in
+            guard case .finding(let finding, let evidence) = event,
+                  finding.ruleId == "TOOL.staleness",
+                  finding.severity == .warning
+            else { return nil }
+            return evidence
+        }.first
+        let expectedEvidence = EvidenceReference.pair(
+            older: "playlists/video_1/video_1_0.m3u8",
+            newer: "playlists/video_1/video_1_2.m3u8"
+        )
+        #expect(warningEvidence == expectedEvidence)
+
+        let folder = try #require(await harness.session.sessionFolderURL)
+        let report = try String(contentsOf: folder.appending(path: "report.md"), encoding: .utf8)
+        for path in expectedEvidence.availablePaths {
+            #expect(report.contains("`\(path)`"))
+        }
+        #expect(report.contains("video_1_1.m3u8") == false)
     }
 
     @Test("a permanently stalled playlist records at most one staleness finding per crossing", .timeLimit(.minutes(1)))

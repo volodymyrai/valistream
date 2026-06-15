@@ -368,7 +368,12 @@ func emit(_ event: SessionEvent, at occurrence: Date? = nil) {
     /// records it, and emits it on the event stream.
     /// Mints, records, and emits a finding with its resolved archive evidence.
     @discardableResult
-    func record(_ violation: RuleViolation, resource: URL, refreshIndex: Int? = nil) -> Finding {
+    func record(
+        _ violation: RuleViolation,
+        resource: URL,
+        refreshIndex: Int? = nil,
+        evidenceBaselineRefreshIndex: Int? = nil
+    ) -> Finding {
         findingCounter += 1
         let finding = Finding(
             id: "f\(findingCounter)",
@@ -390,7 +395,8 @@ func emit(_ event: SessionEvent, at occurrence: Date? = nil) {
             finding,
             aliases: aliasRegistry,
             artifactIndex: evidenceEntries,
-            fallbackID: resource == inputURL ? "master" : "playlist_1"
+            fallbackID: resource == inputURL ? "master" : "playlist_1",
+            baselineRefreshIndex: evidenceBaselineRefreshIndex
         )
         emit(.finding(finding, evidence: evidence), at: finding.observedAt)
 

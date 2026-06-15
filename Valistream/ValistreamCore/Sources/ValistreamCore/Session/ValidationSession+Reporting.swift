@@ -123,6 +123,12 @@ extension ValidationSession {
         let incidentTimeline = IncidentTimeline(
             events: recordedTimelineEvents.map { (sequence: $0.sequence, event: $0.timestampedEvent) }
         )
+        let evidenceByFindingID = recordedTimelineEvents.reduce(into: [String: EvidenceReference]()) { result, recorded in
+            if case .finding(let finding, let evidence) = recorded.timestampedEvent.event,
+               let evidence {
+                result[finding.id] = evidence
+            }
+        }
         let builder = SessionReportBuilder()
         if let jsonData = try? builder.buildJSON(
             session: snapshot,
@@ -138,6 +144,7 @@ extension ValidationSession {
             findings: recordedFindings,
             aliasRegistry: aliasRegistry,
             artifactIndex: artifactIndex,
+            evidenceByFindingID: evidenceByFindingID,
             timeline: incidentTimeline,
             playlistInformation: orderedInformation,
             timeZone: .current

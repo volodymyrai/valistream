@@ -40,6 +40,7 @@ extension ValidationSession {
         setMonitorState(presentationID, .monitoring)
 
         var refreshIndex = 0
+        var lastChangedRefreshIndex = 0
         var lastChangedAt = now()
         var lastChanged = true
         var targetDuration = duration(previous.targetDuration)
@@ -123,6 +124,7 @@ extension ValidationSession {
                 }
                 changed = media != previous
                 if changed {
+                    lastChangedRefreshIndex = refreshIndex
                     lastChangedAt = now()
                     targetDuration = duration(media.targetDuration)
                     setMonitorState(presentationID, .monitoring)
@@ -146,7 +148,13 @@ extension ValidationSession {
             }
             lastChanged = changed
             if changed == false {
-                evaluateStaleness(candidate, since: lastChangedAt, target: targetDuration, refreshIndex: refreshIndex)
+                evaluateStaleness(
+                    candidate,
+                    since: lastChangedAt,
+                    target: targetDuration,
+                    baselineRefreshIndex: lastChangedRefreshIndex,
+                    refreshIndex: refreshIndex
+                )
             }
 
             let findingsThisRefresh = recordedFindings.count - findingsBefore
@@ -205,6 +213,7 @@ extension ValidationSession {
         _ candidate: PlaylistSelection.Candidate,
         since lastChangedAt: Date,
         target: Duration,
+        baselineRefreshIndex: Int,
         refreshIndex: Int
     ) {
         let staleFor = Duration.seconds(now().timeIntervalSince(lastChangedAt))
@@ -221,7 +230,12 @@ extension ValidationSession {
         // monitor loop resets the state to `.monitoring` when content next changes, which re-arms
         // the next crossing. Read the prior state before `setMonitorState` mutates it.
         if monitorState(for: presentationID) != newState {
-            record(violation, resource: candidate.url, refreshIndex: refreshIndex)
+            record(
+                violation,
+                resource: candidate.url,
+                refreshIndex: refreshIndex,
+                evidenceBaselineRefreshIndex: baselineRefreshIndex
+            )
         }
         setMonitorState(presentationID, newState)
     }

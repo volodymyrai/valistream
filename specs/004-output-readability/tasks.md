@@ -223,34 +223,34 @@ to one complete severity-grouped finding with no duplication). Regenerating yiel
 
 ### Tests for User Story 2 (write first; must FAIL before impl) ⚠️
 
-- [ ] T035 [P] [US2] `IncidentTimelineTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/IncidentTimelineTests.swift`
+- [X] T035 [P] [US2] `IncidentTimelineTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/IncidentTimelineTests.swift`
       — ordered by `(at, sequence)`; equal timestamps preserve recorded sequence; routine successful
       refreshes excluded; finding entries are compact and link without duplicating message/evidence
       (R10–R12, SC-008a/b/c).
-- [ ] T036 [P] [US2] `SessionReportTimelineInfoTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/SessionReportTimelineInfoTests.swift`
+- [X] T036 [P] [US2] `SessionReportTimelineInfoTests` in `Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/SessionReportTimelineInfoTests.swift`
       — markdown outcome-first summary (R1), linked section order (R2), findings errors→warnings→info (R3),
       ISO-8601(+offset) timestamps (R5/R6), GitHub callouts + emoji that degrade to plain text (R14/R15),
       no shields-style badges/HTML (R16), one info block per loaded playlist (R13); JSON schema v1 unchanged.
-- [ ] T037 [P] [US2] `IncidentTimelineReportTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/IncidentTimelineReportTests.swift`
+- [X] T037 [P] [US2] `IncidentTimelineReportTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/IncidentTimelineReportTests.swift`
       — end-to-end timeline completeness/ordering/linking/no-duplication and deterministic regeneration
       (R8–R12, SC-008a/b/c).
-- [ ] T038 [P] [US2] `QuietModeFindingsTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/QuietModeFindingsTests.swift`
+- [X] T038 [P] [US2] `QuietModeFindingsTests` (NEW) in `Valistream/Valistream/ValistreamIntegrationTests/QuietModeFindingsTests.swift`
       — quiet contains all warnings/errors/required notices/shutdown/final summary and zero routine
       success/diagnostic lines and no info block; findings grouped by playlist/snapshot with evidence
       attached (T22–T24, SC-004).
 
 ### Implementation for User Story 2
 
-- [ ] T039 [US2] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Session/IncidentTimeline.swift`
+- [X] T039 [US2] Create `Valistream/ValistreamCore/Sources/ValistreamCore/Session/IncidentTimeline.swift`
       — `IncidentTimeline`/`TimelineEntry`/`TimelineKind`, assembled from recorded events and ordered by
       `(at, sequence)`; finding entries carry a link anchor only (research D9; depends T016, T019).
-- [ ] T040 [US2] Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/SessionReportBuilder.swift`
+- [X] T040 [US2] Extend `Valistream/ValistreamCore/Sources/ValistreamCore/Session/SessionReportBuilder.swift`
       `buildMarkdown` — outcome-first summary; linked section order Summary → Incident Timeline → Findings →
       Playlist Information → Legend → Session Details; findings errors→warnings→info; ISO-8601(+offset)
       timestamps; the incident-timeline section (links, no duplication); per-playlist info blocks rendered
       from `PlaylistInfoFormatter` field groups; GitHub callouts + emoji icons with plain-text degradation;
       no badges/HTML. `buildJSON` schema v1 stays unchanged (R1–R16, FR-025–027a; depends T010, T015, T039).
-- [ ] T041 [US2] Extend `Valistream/Valistream/Valistream/StatusRenderer.swift` — quiet-mode filtering: omit
+- [X] T041 [US2] Extend `Valistream/Valistream/Valistream/StatusRenderer.swift` — quiet-mode filtering: omit
       routine discovery/progress/successful-refresh/diagnostic messages and the info block; retain warnings,
       errors, required notices, shutdown state, and final summary; group findings by playlist/snapshot with
       adjacent evidence (T22–T24, FR-015/016; depends T032).

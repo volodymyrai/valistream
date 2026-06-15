@@ -108,6 +108,9 @@ extension ValidationSession {
                 stalenessEpisodes: stalenessEpisodes
             )
         }
+        let incidentTimeline = IncidentTimeline(
+            events: recordedTimelineEvents.map { (sequence: $0.sequence, event: $0.timestampedEvent) }
+        )
         let builder = SessionReportBuilder()
         if let jsonData = try? builder.buildJSON(
             session: snapshot,
@@ -122,7 +125,10 @@ extension ValidationSession {
             playlists: playlistInfos,
             findings: recordedFindings,
             aliasRegistry: aliasRegistry,
-            artifactIndex: artifactIndex
+            artifactIndex: artifactIndex,
+            timeline: incidentTimeline,
+            playlistInformation: playlistInformation,
+            timeZone: .current
         ).data(using: .utf8) {
             try? archive.writeAtomically(mdData, to: folder.appending(path: "report.md"))
         }

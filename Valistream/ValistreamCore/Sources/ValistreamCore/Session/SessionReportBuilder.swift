@@ -194,17 +194,22 @@ public struct SessionReportBuilder: Sendable {
         playlists: [PlaylistInfo],
         findings: [Finding],
         aliasRegistry: AliasRegistry = AliasRegistry(),
-        artifactIndex: [SessionArchive.IndexEntry] = []
+        artifactIndex: [SessionArchive.IndexEntry] = [],
+        timeline: IncidentTimeline = IncidentTimeline(events: []),
+        playlistInformation: [PlaylistInformation] = [],
+        timeZone: TimeZone = .current
     ) -> String {
         var md = "# valistream — Session Report\n\n"
         if let interruption = session.interruption, interruption.contains("PARTIAL") {
             md += "> **PARTIAL REPORT** — session was stopped before completion.\n\n"
         }
+
+        // ── Preamble: session identity table (before sections) ───────────────────────
         md += "| Field | Value |\n|-------|-------|\n"
         md += "| Session ID | `\(session.id)` |\n"
         md += "| Stream | `\(session.inputURL.absoluteString)` |\n"
-        md += "| Started | `\(session.startedAt.formatted(.iso8601))` |\n"
-        md += "| Ended | `\(session.endedAt.formatted(.iso8601))` |\n"
+        md += "| Started | `\(ReportTimestampFormatter.format(session.startedAt, timeZone: timeZone))` |\n"
+        md += "| Ended | `\(ReportTimestampFormatter.format(session.endedAt, timeZone: timeZone))` |\n"
         md += "| State | `\(session.state.rawValue)` |\n"
         if let interruption = session.interruption {
             md += "| Interruption | \(interruption) |\n"
@@ -212,22 +217,129 @@ public struct SessionReportBuilder: Sendable {
         md += "| Stream kind | `\(session.streamKind?.rawValue ?? "unknown")` |\n"
         md += "| Low-Latency HLS | \(session.lowLatencyDetected ? "detected" : "not detected") |\n"
         md += "| Encryption | \(session.encryptionDetected ? "detected" : "not detected") |\n\n"
+
+        // ── Summary ─────────────────────────────────────────────────────────────────
         let errors = findings.count { $0.severity == .error }
         let warnings = findings.count { $0.severity == .warning }
         let infos = findings.count { $0.severity == .info }
         let refreshes = playlists.map(\.refreshCount).max() ?? 0
+        let outcomeText: String
+        switch session.state {
+        case .completed where errors > 0: outcomeText = "Completed with errors"
+        case .completed where warnings > 0: outcomeText = "Completed with warnings"
+        case .completed: outcomeText = "Completed successfully"
+        case .aborted: outcomeText = "Session interrupted"
+        case .failed: outcomeText = "Session failed"
+        default: outcomeText = session.state.rawValue.capitalized
+        }
         md += "## Summary\n\n"
-        md += "| Severity | Count |\n|----------|-------|\n"
-        md += "| Error | \(errors) |\n"
-        md += "| Warning | \(warnings) |\n"
-        md += "| Info | \(infos) |\n\n"
+        md += "**\(outcomeText).** \(errors) error\(errors == 1 ? "" : "s"), "
+            + "\(warnings) warning\(warnings == 1 ? "" : "s"), "
+            + "\(infos) informational finding\(infos == 1 ? "" : "s").\n\n"
         md += "- Playlists: \(playlists.count)\n"
         md += "- Refreshes: \(refreshes)\n\n"
+
+        // ── Incident Timeline ────────────────────────────────────────────────────────
+        md += "## Incident Timeline\n\n"
+        if timeline.entries.isEmpty {
+            md += "_No incidents recorded._\n\n"
+        } else {
+            for entry in timeline.entries {
+                let prefix: String
+                switch entry.kind {
+                case .lifecycle: prefix = "📋"
+                case .finding(.error): prefix = "🔴"
+                case .finding(.warning): prefix = "🟡"
+                case .finding: prefix = "🔵"
+                case .operationalFailure: prefix = "🔴"
+                }
+                if let anchor = entry.findingAnchor {
+                    let findingID = anchor.hasPrefix("finding-")
+                        ? String(anchor.dropFirst("finding-".count))
+                        : anchor
+                    md += "- \(prefix) \(entry.summary) — [Finding \(findingID)](#\(anchor))\n"
+                } else {
+                    md += "- \(prefix) \(entry.summary)\n"
+                }
+            }
+            md += "\n"
+        }
+
+        // ── Findings ─────────────────────────────────────────────────────────────────
+        let resolver = EvidenceResolver()
+        if findings.isEmpty == false {
+            md += "## Findings\n\n"
+            let bySeverity = Dictionary(grouping: findings, by: \.severity)
+            for severity in [Finding.Severity.error, .warning, .info] {
+                guard let group = bySeverity[severity], group.isEmpty == false else { continue }
+                let callout: String
+                let emoji: String
+                let label: String
+                switch severity {
+                case .error:
+                    callout = "> [!CAUTION]"
+                    emoji = "🔴"
+                    label = "Error"
+                case .warning:
+                    callout = "> [!WARNING]"
+                    emoji = "🟡"
+                    label = "Warning"
+                case .info:
+                    callout = ""
+                    emoji = "🔵"
+                    label = "Info"
+                }
+                md += "### \(emoji) \(label)\n\n"
+                if callout.isEmpty == false {
+                    md += "\(callout)\n> \(group.count) \(label.lowercased())\(group.count == 1 ? "" : "s") detected.\n\n"
+                }
+                let byCategory = Dictionary(grouping: group, by: \.category)
+                for (category, categoryFindings) in byCategory.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                    md += "**\(category.rawValue)**\n\n"
+                    for finding in categoryFindings {
+                        let id = aliasRegistry.alias(for: finding.resource)?.alias
+                            ?? finding.resource.lastPathComponent
+                        // Heading acts as GitHub anchor: #### Finding f-error → #finding-f-error
+                        md += "#### Finding \(finding.id)\n\n"
+                        md += "- Rule: `\(finding.ruleId)`\n"
+                        md += "- Playlist: `\(id)`\n"
+                        md += "- Observed: \(ReportTimestampFormatter.format(finding.observedAt, timeZone: timeZone))\n"
+                        md += "- Message: \(finding.message)\n"
+                        if severity != .info {
+                            let reference = resolver.resolve(
+                                finding,
+                                aliases: aliasRegistry,
+                                artifactIndex: artifactIndex,
+                                fallbackID: id
+                            )
+                            md += "- Evidence: \(markdownEvidence(reference))\n"
+                        }
+                        md += "\n"
+                    }
+                }
+            }
+        }
+
+        // ── Playlist Information ──────────────────────────────────────────────────────
+        if playlistInformation.isEmpty == false {
+            md += "## Playlist Information\n\n"
+            for information in playlistInformation {
+                let fieldGroups = PlaylistInfoFormatter.groups(for: information)
+                for group in fieldGroups {
+                    md += "### \(group.title)\n\n"
+                    for field in group.fields {
+                        md += "- \(field.label): \(field.value)\n"
+                    }
+                    md += "\n"
+                }
+            }
+        }
+
+        // ── Legend ────────────────────────────────────────────────────────────────────
         md += "## Legend\n\n"
         if aliasRegistry.all.isEmpty {
             md += "_No aliases registered._\n\n"
-        }
-        else {
+        } else {
             md += "| ID | URL | Role | Attributes |\n|----|-----|------|------------|\n"
             for entry in aliasRegistry.all {
                 let attrs = entry.attributes.isEmpty
@@ -237,41 +349,14 @@ public struct SessionReportBuilder: Sendable {
             }
             md += "\n"
         }
-        let resolver = EvidenceResolver()
-        if findings.isEmpty == false {
-            md += "## Findings\n\n"
-            let bySeverity = Dictionary(grouping: findings, by: \.severity)
-            for severity in [Finding.Severity.error, .warning, .info] {
-                guard let group = bySeverity[severity], group.isEmpty == false else { continue }
-                md += "### \(severity.rawValue.capitalized)\n\n"
-                let byCategory = Dictionary(grouping: group, by: \.category)
-                for (category, categoryFindings) in byCategory.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
-                    md += "**\(category.rawValue)**\n\n"
-                    for finding in categoryFindings {
-                        let id = aliasRegistry.alias(for: finding.resource)?.alias
-                            ?? finding.resource.lastPathComponent
-                        md += "- `\(finding.ruleId)` \(finding.message) — `\(id)`"
-                        if finding.severity != .info {
-                            let reference = resolver.resolve(
-                                finding,
-                                aliases: aliasRegistry,
-                                artifactIndex: artifactIndex,
-                                fallbackID: id
-                            )
-                            md += " · \(markdownEvidence(reference))"
-                        }
-                        md += "\n"
-                    }
-                    md += "\n"
-                }
-            }
-        }
+
+        // ── Session Details ───────────────────────────────────────────────────────────
+        md += "## Session Details\n\n"
         if playlists.isEmpty == false {
-            md += "## Per-playlist\n\n"
             let findingsByResource = Dictionary(grouping: findings, by: \.resource)
             for playlist in playlists {
                 let id = aliasRegistry.alias(for: playlist.url)?.alias ?? playlist.id
-                md += "### `\(id)`\n\n"
+                md += "#### `\(id)`\n\n"
                 let status = playlist.selected
                     ? "selected"
                     : (playlist.excludedByChoice ? "excluded" : "not selected")
@@ -282,23 +367,12 @@ public struct SessionReportBuilder: Sendable {
                 }
                 let recent = (findingsByResource[playlist.url] ?? []).suffix(5)
                 if recent.isEmpty == false {
-                    md += "- Recent findings:\n"
-                    for finding in recent {
-                        md += "  - [\(finding.severity.rawValue)] `\(finding.ruleId)` \(finding.message)"
-                        if finding.severity != .info {
-                            let reference = resolver.resolve(
-                                finding,
-                                aliases: aliasRegistry,
-                                artifactIndex: artifactIndex,
-                                fallbackID: id
-                            )
-                            md += " · \(markdownEvidence(reference))"
-                        }
-                        md += "\n"
-                    }
+                    md += "- Recent finding IDs: \(recent.map { "`\($0.id)`" }.joined(separator: ", "))\n"
                 }
                 md += "\n"
             }
+        } else {
+            md += "_No playlists._\n\n"
         }
 
         return md

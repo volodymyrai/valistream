@@ -89,6 +89,9 @@ public struct RosterEntry: Sendable, Equatable {
 ///
 /// All cases carry only playlist IDs and snapshot labels — never raw URLs — preserving SC-003.
 public enum TraceEvent: Sendable, Equatable {
+    /// About to fetch a playlist URL (emitted at fetch start, verbose tier).
+    case fetchStarted(url: URL, playlistID: String, refreshIndex: Int)
+
     /// About to request a playlist snapshot.
     case fetchIntent(snapshotID: String)
 

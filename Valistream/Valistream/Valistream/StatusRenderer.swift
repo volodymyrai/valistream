@@ -275,6 +275,8 @@ struct StatusRenderer: Sendable {
     }
 
     private mutating func buffer(finding: Finding, evidence: EvidenceReference?, at: Date) {
+        // Quiet mode: suppress informational findings entirely.
+        if writer.mode.verbosity == .quiet, finding.severity == .info { return }
         guard finding.refreshIndex != nil, let key = refreshKey(for: finding, evidence: evidence) else {
             let snapshot = SnapshotID.label(
                 id: rosterIDsByURL[finding.resource] ?? "playlist",
@@ -328,8 +330,11 @@ struct StatusRenderer: Sendable {
             wholeLineTint: severity != .info,
             at: pending.at
         )]
+        // In quiet mode, evidence lines must directly follow the finding line without a timestamp
+        // bracket so the human can read `message\nEvidence: path` as one unit (R10, US2 T041).
+        let quietEvidence = writer.mode.verbosity == .quiet
         lines.append(contentsOf: evidenceLines(pending.evidence).map { evidence in
-            .init(evidence, role: .evidencePath, at: pending.at)
+            .init(evidence, role: .evidencePath, at: pending.at, noTimestamp: quietEvidence)
         })
         return lines
     }

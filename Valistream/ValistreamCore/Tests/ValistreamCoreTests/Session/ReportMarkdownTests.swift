@@ -75,7 +75,7 @@ struct ReportMarkdownTests {
 
     // MARK: - Required sections
 
-    @Test("markdown has Summary, Legend, Findings, and Per-playlist sections")
+    @Test("markdown has Summary, Legend, Findings, and Session Details sections")
     func requiredSections() {
         let md = SessionReportBuilder().buildMarkdown(
             session: makeSnapshot(), playlists: makePlaylists(),
@@ -84,7 +84,7 @@ struct ReportMarkdownTests {
         #expect(md.contains("## Summary"))
         #expect(md.contains("## Legend"))
         #expect(md.contains("## Findings"))
-        #expect(md.contains("## Per-playlist"))
+        #expect(md.contains("## Session Details"))
     }
 
     @Test("header contains session id, stream URL, and state")
@@ -115,10 +115,10 @@ struct ReportMarkdownTests {
             findings: makeFindings(), aliasRegistry: makeRegistry()
         )
         guard
-            let errorRange = md.range(of: "### Error"),
-            let warnRange  = md.range(of: "### Warning")
+            let errorRange = md.range(of: "### 🔴 Error"),
+            let warnRange  = md.range(of: "### 🟡 Warning")
         else {
-            Issue.record("Missing ### Error or ### Warning heading in Findings")
+            Issue.record("Missing ### 🔴 Error or ### 🟡 Warning heading in Findings")
             return
         }
         #expect(errorRange.lowerBound < warnRange.lowerBound, "Errors must appear before warnings")
@@ -140,8 +140,10 @@ struct ReportMarkdownTests {
         }
         let fromFindings = String(md[findingsRange.lowerBound...])
         let findingsBody: String
-        if let perPlaylistRange = fromFindings.range(of: "## Per-playlist") {
-            findingsBody = String(fromFindings[..<perPlaylistRange.lowerBound])
+        // In the new section order, Findings is followed by Playlist Information (or Legend).
+        if let nextRange = fromFindings.range(of: "## Playlist Information")
+            ?? fromFindings.range(of: "## Legend") {
+            findingsBody = String(fromFindings[..<nextRange.lowerBound])
         }
         else {
             findingsBody = fromFindings
@@ -149,18 +151,18 @@ struct ReportMarkdownTests {
         #expect(findingsBody.contains("https://") == false)
     }
 
-    @Test("Per-playlist section has zero raw .m3u8 URLs (SC-007)")
+    @Test("Session Details section has zero raw .m3u8 URLs (SC-007)")
     func perPlaylistHasNoRawURLs() {
         let md = SessionReportBuilder().buildMarkdown(
             session: makeSnapshot(), playlists: makePlaylists(),
             findings: makeFindings(), aliasRegistry: makeRegistry()
         )
-        guard let perPlaylistRange = md.range(of: "## Per-playlist") else {
-            Issue.record("No ## Per-playlist section"); return
+        guard let sessionDetailsRange = md.range(of: "## Session Details") else {
+            Issue.record("No ## Session Details section"); return
         }
-        let perPlaylistBody = String(md[perPlaylistRange.lowerBound...])
-        let rawURLMatches = perPlaylistBody.ranges(of: ".m3u8")
-        #expect(rawURLMatches.isEmpty, "Found raw .m3u8 URL in Per-playlist section")
+        let sessionDetailsBody = String(md[sessionDetailsRange.lowerBound...])
+        let rawURLMatches = sessionDetailsBody.ranges(of: ".m3u8")
+        #expect(rawURLMatches.isEmpty, "Found raw .m3u8 URL in Session Details section")
     }
 
     // MARK: - Every alias resolves via Legend (FR-025)
@@ -277,7 +279,14 @@ struct ReportMarkdownTests {
             Issue.record("No ## Findings section")
             return
         }
-        let findingsBody = String(md[findingsStart.lowerBound...])
+        let fromFindings = String(md[findingsStart.lowerBound...])
+        let findingsBody: String
+        if let nextRange = fromFindings.range(of: "## Playlist Information")
+            ?? fromFindings.range(of: "## Legend") {
+            findingsBody = String(fromFindings[..<nextRange.lowerBound])
+        } else {
+            findingsBody = fromFindings
+        }
         #expect(findingsBody.contains("no body captured for 1080p_avc1"))
         #expect(findingsBody.contains(videoURL.absoluteString) == false)
     }

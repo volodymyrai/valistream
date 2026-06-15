@@ -27,6 +27,9 @@ public enum TraceFormatter {
     /// Formats a `TraceEvent` to a single, category-prefixed, ID-based line.
     public static func format(_ event: TraceEvent) -> String {
         switch event {
+        case .fetchStarted(let url, let playlistID, let refreshIndex):
+            return "Fetch started: \(playlistID) #\(refreshIndex) (\(url.absoluteString))"
+
         case .fetchIntent(let snapshotID):
             return "Fetch: requesting \(snapshotID)"
 

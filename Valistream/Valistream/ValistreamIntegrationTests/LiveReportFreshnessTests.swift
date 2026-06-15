@@ -108,7 +108,7 @@ struct LiveReportFreshnessTests {
 
         #expect(md.contains("## Summary"))
         #expect(md.contains("## Legend"))
-        #expect(md.contains("## Per-playlist"))
+        #expect(md.contains("## Session Details"))
 
         await harness.abortAndFinish()
     }

@@ -21,17 +21,22 @@ struct TerminalWriter: Sendable {
         let role: PresentationRole
         let wholeLineTint: Bool
         let at: Date?
+        /// When `true`, this line is rendered without a leading timestamp bracket.
+        /// Used for quiet-mode evidence continuations that must directly follow a finding line.
+        let noTimestamp: Bool
 
         init(
             _ text: String,
             role: PresentationRole = .metadata,
             wholeLineTint: Bool = false,
-            at: Date? = nil
+            at: Date? = nil,
+            noTimestamp: Bool = false
         ) {
             self.text = text
             self.role = role
             self.wholeLineTint = wholeLineTint
             self.at = at
+            self.noTimestamp = noTimestamp
         }
     }
 
@@ -144,6 +149,11 @@ struct TerminalWriter: Sendable {
     // MARK: - Private
 
     private func formattedLines(for line: Line, timestamp: String) -> [String] {
+        guard line.noTimestamp == false else {
+            // Quiet-mode evidence continuation: no timestamp prefix, no wrapping.
+            guard mode.colorEnabled else { return [line.text] }
+            return [apply(style: line.role.ansiStyle, to: line.text)]
+        }
         let firstPrefix = timestamp + " "
         let continuation = mode.glyphStyle == .unicode ? "  ↳ " : "  -> "
         let continuationPrefix = timestamp + continuation

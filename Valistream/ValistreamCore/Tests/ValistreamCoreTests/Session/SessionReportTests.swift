@@ -238,11 +238,11 @@ struct SessionReportTests {
         #expect(md.contains("Warning"))
     }
 
-    @Test("report.md lists all playlists under Per-playlist section")
+    @Test("report.md lists all playlists under Session Details section")
     func markdownListsPlaylists() {
         let builder = SessionReportBuilder()
         let md = builder.buildMarkdown(session: makeSnapshot(), playlists: makePlaylists(), findings: [])
-        #expect(md.contains("## Per-playlist"))
+        #expect(md.contains("## Session Details"))
         #expect(md.contains("master"))
         #expect(md.contains("variant-0"))
         #expect(md.contains("audio-0"))

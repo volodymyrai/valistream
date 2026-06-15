@@ -1,20 +1,26 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/003-monitoring-evidence/plan.md`
+`specs/004-output-readability/plan.md`
 
-Active feature: 003-monitoring-evidence (Reliable Monitoring and Evidence)
-- Spec: specs/003-monitoring-evidence/spec.md
-- Plan: specs/003-monitoring-evidence/plan.md
+Active feature: 004-output-readability (Readable Output and Onboarding)
+- Spec: specs/004-output-readability/spec.md
+- Plan: specs/004-output-readability/plan.md
 - Design: data-model.md, contracts/, research.md, quickstart.md (same directory)
-- Builds on: 001-hls-stream-validator + 002-performance-ux (validation rules, JSON report schema,
-  exit codes are FROZEN — incl. `playlists[].id`; reworks 002's alias scheme into the new ID scheme)
-- Scope: evidence files for every ERROR/WARN; monotonic input-resilient heartbeat; `<height>p_<codecs>`
-  IDs; default-all selection (`--all` removed, `--select`/`--preselect` reworked); pretty-printed JSON
-  files. No new dependency. Ships 0.3.0 (breaking CLI change, migration documented)
+- Builds on: 003-monitoring-evidence (+001/002). FROZEN: validation results, rule/finding/playlist/
+  snapshot IDs, evidence resolution, JSON report schema v1, `.meta.json`, `FindingsLog` JSONL, `--json`
+  stream, selection, exit codes 0/1/2/3/130. Reuses existing output layer (TerminalOutputMode/
+  TerminalWriter/Rainbow/ProgressFormatter/TraceFormatter)
+- Scope (presentation-only): occurrence timestamps on every human message (terminal `[HH:mm:ss.SSS]`,
+  report ISO-8601+offset); blank-line grouping grammar (exactly one blank between logical groups, none
+  within — disabled for `--json`); whole-line severity tint + presentation roles + Unicode/ASCII status
+  markers; one persistent result per refresh; one-time playlist information block (master/media fields +
+  protection None/Encrypted(AES-128)/DRM via additive EXT-X-KEY/SESSION-KEY metadata); incident timeline
+  in report; playlist lifecycle events; README rewrite + coverage badge; version 0.4.0. No new dependency
 - Stack: Swift 6 (strict concurrency), SwiftPM + Xcode workspace. Core `ValistreamCore` stays
   dependency-free; CLI target deps: swift-argument-parser + Rainbow (color) + Promptberry (prompts)
-- Build/test: xcode-tools `BuildProject`; `swift test` (unit) — pipe through `xcsift` for log analysis
+- Build/test: xcode-tools `BuildProject`; `swift test` (unit) — pipe through `xcsift`. Coverage enabled
+  in `Valistream.xctestplan` (Valistream + ValistreamCore) → read via `xcrun xccov` for README badge
 
 Implementation rules (binding):
 - Code style: follow `styleguide.md` (repo root)

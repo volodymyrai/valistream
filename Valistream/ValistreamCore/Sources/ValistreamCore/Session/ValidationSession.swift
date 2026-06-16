@@ -228,10 +228,10 @@ public actor ValidationSession {
                 )))
                 let load = await loader.load(reference.url, role: reference.role)
                 let playlistID = "\(reference.role.rawValue)-\(index)"
-                await archiveFetch(load.result, requestURL: reference.url, playlistID: playlistID)
+                let presentationID = aliasRegistry.alias(for: reference.url)?.alias ?? playlistID
+                await archiveFetch(load.result, requestURL: reference.url, playlistID: presentationID)
                 if let playlist = load.playlist {
-                    trackPlaylist(playlistID, kind: .media, role: reference.role, url: reference.url, selected: true, refreshCount: 1)
-                    let presentationID = aliasRegistry.alias(for: reference.url)?.alias ?? playlistID
+                    trackPlaylist(presentationID, kind: .media, role: reference.role, url: reference.url, selected: true, refreshCount: 1)
                     let loadedKind = playlist.media.map(classifier.classify)
                     emitPlaylistInformation(
                         playlistID: presentationID,
@@ -250,9 +250,9 @@ public actor ValidationSession {
         } else {
             aliasRegistry.alias(for: inputURL, role: .video, attributes: [:])
             mediaLoads.append(rootLoad)
-            trackPlaylist("media", kind: .media, role: .variant, url: inputURL, selected: true, refreshCount: 1)
-            emitRoster(masterURL: nil, references: [])
             let presentationID = aliasRegistry.alias(for: inputURL)?.alias ?? "media"
+            trackPlaylist(presentationID, kind: .media, role: .variant, url: inputURL, selected: true, refreshCount: 1)
+            emitRoster(masterURL: nil, references: [])
             let loadedKind = rootPlaylist.media.map(classifier.classify)
             emitPlaylistInformation(
                 playlistID: presentationID,

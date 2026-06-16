@@ -1,0 +1,104 @@
+<executor_handoff>
+  <system_instructions>
+    Preserve existing patterns. Follow scope exactly — no widening.
+    Use chosen path only. Swift 6 strict concurrency. macOS14+.
+    Edits via serena symbolic tools. Build Valistream scheme + run Valistream.xctestplan after.
+  </system_instructions>
+
+  <task_brief>
+    <objective>
+      Make `--preselect` match against playlist alias (roster ID, e.g. "1080p_avc1") by substring,
+      added to existing broad match set. So `./valistream <URL> --preselect 1080p` preselects all
+      playlists whose alias/id/name/url contains "1080p".
+    </objective>
+
+    <why>
+      Today matcher searches [id, groupID, name, url]. Video variant id = synthetic "variant-0";
+      resolution/codecs dropped before selection. User reads alias "1080p_avc1" as the ID but matcher
+      never sees it. So `--preselect 1080p` only matches by luck (url contains it). Add alias to
+      searchable fields. Alias already seeded in registry BEFORE selection runs.
+    </objective>
+
+    <repo_signals>
+      - Matcher: PlaylistSelection.Candidate.matches(_:) — localizedStandardContains over
+        [id, groupID, name, url.absoluteString]. Already substring + case/diacritic-insensitive.
+      - Candidate built only in PlaylistSelection.candidates(references:directMediaURL:) (2 sites).
+      - candidates(...) called once: ValidationSession.swift:295.
+      - resolve(...) called once in prod (ValidationSession:300) + tests.
+      - Alias source: AliasRegistry.alias(for:) -> PlaylistAlias?, .alias is the string.
+        Registry seeded with RESOLUTION/CODECS at ValidationSession:207-210 (master branch) and
+        :251 (direct-media branch), keyed by reference.url / inputURL. Both run BEFORE :295.
+      - ValidationSession is `public actor`. candidates(...) called sync inside actor-isolated run();
+        aliasFor closure non-escaping → stays actor-isolated, NO Sendable needed.
+    </repo_signals>
+
+    <scope>
+      IN: add `alias` field to Candidate; include alias in matches() field set; inject alias resolver
+      into candidates(); wire registry lookup at ValidationSession:295. Backward-compatible — existing
+      id/groupID/name/url matching preserved.
+      OUT: interactive checklist display (PlaylistChecklist.swift:41, PromptberrySelection.swift:47
+      still render candidate.id). Do NOT touch. No CLI flag/usage/help changes. No new types.
+    </scope>
+
+    <implementation_path>
+      3 edits, no new type:
+
+      1. PlaylistSelection.swift — Candidate struct:
+         Add `public let alias: String?`.
+         Add `alias: String? = nil` to init (last param, defaulted → test call sites unaffected).
+         matches(_:): change fields to
+           let fields = [id, groupID, name, alias, url.absoluteString].compactMap { $0 }
+
+      2. PlaylistSelection.swift — candidates(references:directMediaURL:):
+         Add param `aliasFor: (URL) -> String? = { _ in nil }`.
+         direct-media branch: Candidate(id:"media", role:.variant, url:directMediaURL, alias: aliasFor(directMediaURL))
+         references branch: pass alias: aliasFor(reference.url) into the Candidate(...) build.
+
+      3. ValidationSession.swift:295:
+         let candidates = PlaylistSelection.candidates(
+             references: references,
+             directMediaURL: directMediaURL,
+             aliasFor: { aliasRegistry.alias(for: $0)?.alias }
+         )
+    </implementation_path>
+
+    <code_level_guidance>
+      - Keep `alias` last in init + defaulted nil → existing Candidate(...) constructions (and tests
+        building Candidate directly) compile unchanged.
+      - Candidate is Equatable — adding stored field changes ==. Existing tests compare
+        resolve(candidates) == candidates (same array both sides) → equality still holds.
+      - Resulting semantics (intended): `--preselect 1080p` matches "1080p_avc1" AND "iframe_1080p";
+        `--preselect 1080` matches too (substring of "1080p"); dedup "1080p_avc1_2" still matches.
+      - Do NOT add Sendable annotations to aliasFor — non-escaping sync use only.
+    </code_level_guidance>
+
+    <entry_points>
+      - Valistream/ValistreamCore/Sources/ValistreamCore/Session/PlaylistSelection.swift
+      - Valistream/ValistreamCore/Sources/ValistreamCore/Session/ValidationSession.swift (line ~295)
+      - Tests: Valistream/ValistreamCore/Tests/ValistreamCoreTests/Session/PlaylistSelectionTests.swift
+      - Integration: Valistream/Valistream/ValistreamIntegrationTests/SelectionMatrixTests.swift
+    </entry_points>
+
+    <search_fallback>
+      grep "func matches(" and "static func candidates(" and "static func resolve(" under
+      ValistreamCore/Sources. grep "PlaylistSelection.candidates" for the single wire site.
+    </search_fallback>
+
+    <acceptance_criteria>
+      - Candidate has `alias: String?`; matches() includes it.
+      - candidates(...) populates alias from injected resolver at both construction branches.
+      - ValidationSession:295 passes aliasRegistry-backed resolver.
+      - NEW unit test: Candidate(alias:"1080p_avc1") + resolve(_, patterns:["1080p"]) → selected;
+        also `["1080"]` → selected. No-alias existing cases unchanged.
+      - NEW integration test (SelectionMatrixTests): master with opaque variant URIs (no resolution in
+        url) + RESOLUTION attrs → `--preselect 1080p` (selectionPatterns:["1080p"], no selectPlaylists)
+        selects the 1080p variant; non-1080p variant/audio not monitored.
+      - No changes to checklist display, CLI flags, usage text.
+    </acceptance_criteria>
+
+    <validation>
+      Build Valistream scheme (xcode-tools BuildProject). Run Valistream.xctestplan — all pass.
+      Confirm existing PlaylistSelectionTests + SelectionPromptPolicyTests still green.
+    </validation>
+  </task_brief>
+</executor_handoff>

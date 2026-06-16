@@ -58,6 +58,22 @@ struct PlaylistSelectionTests {
         #expect(resolved.map(\.id) == ["sub-no"])
     }
 
+
+    @Test(
+        "a pattern matches by alias substring only, when no other field matches",
+        arguments: ["1080p", "1080"]
+    )
+    func matchesByAliasSubstring(pattern: String) {
+        let aliasOnlyCandidates: [PlaylistSelection.Candidate] = [
+            .init(id: "variant-0", role: .variant, url: URL(string: "https://ex.com/abc123/index.m3u8")!, alias: "1080p_avc1"),
+            .init(id: "variant-1", role: .variant, url: URL(string: "https://ex.com/def456/index.m3u8")!, alias: "720p_avc1"),
+        ]
+
+        let resolved = PlaylistSelection.resolve(aliasOnlyCandidates, patterns: [pattern])
+
+        #expect(resolved.map(\.id) == ["variant-0"])
+    }
+
     @Test("multiple patterns union their matches in discovery order")
     func multiplePatternsUnion() {
         let resolved = PlaylistSelection.resolve(candidates, patterns: ["v1080", "aud1"])

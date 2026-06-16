@@ -22,6 +22,8 @@ struct SelectionMatrixTests {
     private let masterURL = URL(string: "https://ex.com/hls/master.m3u8")!
     private let videoURL  = URL(string: "https://ex.com/hls/v720/index.m3u8")!
     private let audioURL  = URL(string: "https://ex.com/hls/audio/en.m3u8")!
+    private let opaqueVariant1080URL = URL(string: "https://ex.com/hls/abc123/playlist.m3u8")!
+    private let opaqueVariant720URL  = URL(string: "https://ex.com/hls/def456/playlist.m3u8")!
 
 
 
@@ -124,6 +126,40 @@ struct SelectionMatrixTests {
     }
 
 
+    @Test("--preselect matches by alias when variant URIs are opaque (no resolution in URL)")
+    func preselectPatternMatchesByAliasWithOpaqueURIs() async throws {
+        let fetcher = ScriptedStreamFetcher()
+        fetcher.stub(masterURL, body: opaqueVariantMasterPlaylist)
+        fetcher.stub(opaqueVariant1080URL, body: liveMediaPlaylist)
+        fetcher.stub(opaqueVariant720URL, body: liveMediaPlaylist)
+
+        // Neither variant URI contains a resolution string — only the alias derived from the
+        // RESOLUTION/CODECS attributes (e.g. "1080p_avc1") can match "1080p".
+        let session = ValidationSession(
+            inputURL: masterURL,
+            config: SessionConfig(
+                nonInteractive: true,
+                selectionPatterns: ["1080p"]
+            ),
+            fetcher: fetcher,
+            id: "sel-matrix-preselect-alias",
+            now: { Date(timeIntervalSince1970: 1_700_000_000) },
+            sleep: { _ in try Task.checkCancellation() }
+        )
+
+        let task = Task { await session.run() }
+        for _ in 0..<10_000 { await Task.yield() }
+        await session.abort()
+        task.cancel()
+        await task.value
+
+        let resolution1080Fetches = fetcher.fetchCount(for: opaqueVariant1080URL)
+        let resolution720Fetches = fetcher.fetchCount(for: opaqueVariant720URL)
+        #expect(resolution1080Fetches > 1, "1080p variant must be monitored (alias-matched) when --preselect 1080p is used")
+        #expect(resolution720Fetches <= 1, "720p variant must not be monitored when --preselect 1080p is used (≤1 = initial only)")
+    }
+
+
 
     // MARK: - Session-level: --select non-TTY processes all playlists (FR-025)
 
@@ -188,5 +224,18 @@ struct SelectionMatrixTests {
         seg1.ts
         #EXTINF:6.0,
         seg2.ts
+        """
+
+
+    /// Master with two video variants whose URIs are opaque hashes (no resolution string), each
+    /// carrying RESOLUTION/CODECS attributes so the alias registry derives "1080p_avc1" /
+    /// "720p_avc1" — the only fields that distinguish them for `--preselect`.
+    private let opaqueVariantMasterPlaylist = """
+        #EXTM3U
+        #EXT-X-INDEPENDENT-SEGMENTS
+        #EXT-X-STREAM-INF:BANDWIDTH=4000000,AVERAGE-BANDWIDTH=3500000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1920x1080
+        abc123/playlist.m3u8
+        #EXT-X-STREAM-INF:BANDWIDTH=1500000,AVERAGE-BANDWIDTH=1200000,CODECS="avc1.4d401f,mp4a.40.2",RESOLUTION=1280x720
+        def456/playlist.m3u8
         """
 }

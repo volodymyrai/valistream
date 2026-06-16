@@ -1,0 +1,33 @@
+{
+  "originHash" : "90740dd90ba1d10ed2e670be35c83a48f04916fb311a92e53962150bd057147e",
+  "pins" : [
+    {
+      "identity" : "promptberry",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/onmyway133/Promptberry.git",
+      "state" : {
+        "revision" : "3637670397736a6865f6093280ba4456cc733932",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "rainbow",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/onevcat/Rainbow.git",
+      "state" : {
+        "revision" : "cdf146ae671b2624917648b61c908d1244b98ca1",
+        "version" : "4.2.1"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser",
+      "state" : {
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
+      }
+    }
+  ],
+  "version" : 3
+}

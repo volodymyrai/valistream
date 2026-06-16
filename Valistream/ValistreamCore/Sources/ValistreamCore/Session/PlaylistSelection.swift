@@ -23,18 +23,20 @@ public struct PlaylistSelection: Sendable {
         public let url: URL
         public let groupID: String?
         public let name: String?
+        public let alias: String?
 
-        public init(id: String, role: PlaylistRole, url: URL, groupID: String? = nil, name: String? = nil) {
+        public init(id: String, role: PlaylistRole, url: URL, groupID: String? = nil, name: String? = nil, alias: String? = nil) {
             self.id = id
             self.role = role
             self.url = url
             self.groupID = groupID
             self.name = name
+            self.alias = alias
         }
 
         /// Whether any of the searchable fields contains `pattern` (case- and diacritic-insensitive).
         func matches(_ pattern: String) -> Bool {
-            let fields = [id, groupID, name, url.absoluteString].compactMap { $0 }
+            let fields = [id, groupID, name, alias, url.absoluteString].compactMap { $0 }
             return fields.contains { $0.localizedStandardContains(pattern) }
         }
     }
@@ -61,10 +63,10 @@ public struct PlaylistSelection: Sendable {
     /// Builds the monitor candidates for a stream: one per discovered media reference, or a single
     /// direct-media candidate when the input is itself a media playlist (no master). Returns empty
     /// when there is neither — e.g. a master that referenced no usable media playlists.
-    public static func candidates(references: [PlaylistReference], directMediaURL: URL?) -> [Candidate] {
+    public static func candidates(references: [PlaylistReference], directMediaURL: URL?, aliasFor: (URL) -> String? = { _ in nil }) -> [Candidate] {
         guard references.isEmpty == false else {
             guard let directMediaURL else { return [] }
-            return [Candidate(id: "media", role: .variant, url: directMediaURL)]
+            return [Candidate(id: "media", role: .variant, url: directMediaURL, alias: aliasFor(directMediaURL))]
         }
         return references.enumerated().map { index, reference in
             Candidate(
@@ -72,7 +74,8 @@ public struct PlaylistSelection: Sendable {
                 role: reference.role,
                 url: reference.url,
                 groupID: reference.groupID,
-                name: reference.name
+                name: reference.name,
+                alias: aliasFor(reference.url)
             )
         }
     }

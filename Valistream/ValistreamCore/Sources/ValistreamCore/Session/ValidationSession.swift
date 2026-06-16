@@ -292,7 +292,11 @@ public actor ValidationSession {
 
         setState(.selectingPlaylists)
         let directMediaURL = rootPlaylist.media != nil ? inputURL : nil
-        let candidates = PlaylistSelection.candidates(references: references, directMediaURL: directMediaURL)
+        let candidates = PlaylistSelection.candidates(
+            references: references,
+            directMediaURL: directMediaURL,
+            aliasFor: { aliasRegistry.alias(for: $0)?.alias }
+        )
         let selected: [PlaylistSelection.Candidate]
         if config.nonInteractive == false, let selectPlaylists {
             selected = await selectPlaylists(candidates)

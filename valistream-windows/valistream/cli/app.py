@@ -183,6 +183,13 @@ async def _run(
         stream_type = classify_stream(result.body)
         session_id = make_session_id(url)
 
+        # Resolve relative URIs (variants, media, audio/subtitle groups) against
+        # the URL we actually fetched, following any redirects. CDNs often
+        # redirect a load-balancer hostname to an edge host whose auth token is
+        # embedded in the path; resolving against the original request URL would
+        # drop that token and yield HTTP 401 on every variant fetch.
+        base_url = result.final_url
+
         base_dir = Path(output_dir) if output_dir else Path.home() / ".valistream" / "sessions"
         session_dir = base_dir / session_id
         session_dir.mkdir(parents=True, exist_ok=True)
@@ -197,10 +204,10 @@ async def _run(
         if ct:
             session.add_findings(validate_content_type(ct, playlist_url=url))
 
-        master = parse_master_playlist(result.body, url)
+        master = parse_master_playlist(result.body, base_url)
 
         if isinstance(master, ParseError):
-            media = parse_media_playlist(result.body, url)
+            media = parse_media_playlist(result.body, base_url)
             if isinstance(media, ParseError):
                 console.print(
                     f"[red]Error:[/red] Could not parse playlist: {master.message}",

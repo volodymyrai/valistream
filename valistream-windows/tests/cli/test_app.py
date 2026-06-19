@@ -78,7 +78,7 @@ class TestVersionFlag:
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
         assert "valistream" in result.output
-        assert "0.6.0" in result.output
+        assert "0.6.2" in result.output
 
 
 class TestHelpFlag:

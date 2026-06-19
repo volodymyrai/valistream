@@ -48,6 +48,21 @@ from valistream.parser.url import resolve_playlist_url
             "seg0.ts",
             "http://cdn.example.com/live/sub/seg0.ts",
         ),
+        (
+            "https://cdn.example.com/live/master.m3u8?token=abc&va=123",
+            "720p/index.m3u8",
+            "https://cdn.example.com/live/720p/index.m3u8?token=abc&va=123",
+        ),
+        (
+            "https://cdn.example.com/live/master.m3u8?token=abc",
+            "720p/index.m3u8?token=xyz",
+            "https://cdn.example.com/live/720p/index.m3u8?token=xyz",
+        ),
+        (
+            "https://cdn.example.com/live/master.m3u8?token=abc",
+            "https://other.cdn.com/720p.m3u8",
+            "https://other.cdn.com/720p.m3u8",
+        ),
     ],
     ids=[
         "relative-same-dir",
@@ -58,6 +73,9 @@ from valistream.parser.url import resolve_playlist_url
         "absolute-path",
         "empty-returns-base",
         "nested-relative",
+        "cdn-token-propagated-to-relative",
+        "relative-own-query-not-overridden",
+        "absolute-url-not-inheriting-base-query",
     ],
 )
 def test_resolve_playlist_url(base: str, relative: str, expected: str) -> None:

@@ -45,6 +45,7 @@ class FindingCode(str, Enum):
 
     # Delivery / transport
     DELIVERY_CONTENT_TYPE = "TOOL.delivery.content-type"
+    TOOL_FETCH_VARIANT = "TOOL.fetch.variant"
 
 
 @dataclass(frozen=True)

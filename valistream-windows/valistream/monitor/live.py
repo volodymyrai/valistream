@@ -11,6 +11,7 @@ from valistream.parser.url import resolve_playlist_url
 from valistream.validator.content_type import validate_content_type
 from valistream.validator.continuity import check_continuity
 from valistream.validator.engine import validate_master, validate_media
+from valistream.validator.finding import Finding, FindingCode, Severity
 from valistream.monitor.session import SessionState
 
 if TYPE_CHECKING:
@@ -91,6 +92,13 @@ async def _monitor_rendition(
 
     result = await client.fetch(url)  # type: ignore[union-attr]
     if not result.ok:  # type: ignore[union-attr]
+        async with session.lock:
+            session.add_finding(Finding(
+                code=FindingCode.TOOL_FETCH_VARIANT,
+                severity=Severity.ERROR,
+                message=f"HTTP {result.status_code}: could not fetch variant playlist",  # type: ignore[union-attr]
+                playlist_url=url,
+            ))
         return
 
     ct = result.headers.get("Content-Type", "")  # type: ignore[union-attr]

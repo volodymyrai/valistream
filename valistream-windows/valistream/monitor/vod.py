@@ -9,6 +9,7 @@ from valistream.parser.media import parse_media_playlist
 from valistream.parser.url import resolve_playlist_url
 from valistream.validator.content_type import validate_content_type
 from valistream.validator.engine import validate_master, validate_media
+from valistream.validator.finding import Finding, FindingCode, Severity
 from valistream.monitor.session import SessionState
 
 
@@ -44,6 +45,12 @@ async def validate_vod(
         result = await client.fetch(url)  # type: ignore[union-attr]
 
         if not result.ok:
+            session.add_finding(Finding(
+                code=FindingCode.TOOL_FETCH_VARIANT,
+                severity=Severity.ERROR,
+                message=f"HTTP {result.status_code}: could not fetch variant playlist",  # type: ignore[union-attr]
+                playlist_url=url,
+            ))
             continue
 
         ct = result.headers.get("Content-Type", "")

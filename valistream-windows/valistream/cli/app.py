@@ -113,6 +113,7 @@ def main(
                 quiet=quiet,
                 verbose=verbose,
                 console=console,
+                use_color=use_color,
             )
         )
     except KeyboardInterrupt:
@@ -134,6 +135,7 @@ async def _run(
     quiet: bool,
     verbose: bool,
     console: Console,
+    use_color: bool = True,
 ) -> int:
     from valistream.artifacts.findings_log import append_finding
     from valistream.cli.preselect import filter_renditions
@@ -236,8 +238,9 @@ async def _run(
             if stream_type == StreamType.VOD:
                 await validate_vod(session, master, client)
             else:
+                display = None if quiet or json_output else create_live_display(console, color=use_color)
                 await monitor_live(
-                    session, master, client, limit_seconds=limit_seconds
+                    session, master, client, limit_seconds=limit_seconds, display=display
                 )
 
         findings_log = session_dir / "findings.jsonl"

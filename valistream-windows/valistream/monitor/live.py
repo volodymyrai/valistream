@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from valistream.parser.models import MasterPlaylist, MediaPlaylist, ParseError
 from valistream.parser.media import parse_media_playlist
@@ -12,6 +12,9 @@ from valistream.validator.content_type import validate_content_type
 from valistream.validator.continuity import check_continuity
 from valistream.validator.engine import validate_master, validate_media
 from valistream.monitor.session import SessionState
+
+if TYPE_CHECKING:
+    from valistream.terminal.display import LiveDisplay, RenditionStatus
 
 
 @runtime_checkable
@@ -25,17 +28,23 @@ async def monitor_live(
     client: object,
     *,
     limit_seconds: float | None = None,
+    display: LiveDisplay | None = None,
 ) -> None:
     session.add_findings(validate_master(master))
 
     try:
-        if limit_seconds is not None:
-            await asyncio.wait_for(
-                _monitor_all_renditions(session, master, client),
-                timeout=limit_seconds,
-            )
-        else:
-            await _monitor_all_renditions(session, master, client)
+        with display or _NullContext():
+            if display is not None:
+                for rendition in session.selected_renditions:
+                    display.add_rendition(rendition)
+
+            if limit_seconds is not None:
+                await asyncio.wait_for(
+                    _monitor_all_renditions(session, master, client, display=display),
+                    timeout=limit_seconds,
+                )
+            else:
+                await _monitor_all_renditions(session, master, client, display=display)
     except asyncio.TimeoutError:
         pass
     except asyncio.CancelledError:
@@ -44,15 +53,26 @@ async def monitor_live(
         session.finish()
 
 
+class _NullContext:
+    def __enter__(self) -> _NullContext:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        pass
+
+
 async def _monitor_all_renditions(
     session: SessionState,
     master: MasterPlaylist,
     client: object,
+    *,
+    display: LiveDisplay | None = None,
 ) -> None:
     async with asyncio.TaskGroup() as tg:
         for rendition in session.selected_renditions:
+            status = display.get_status(rendition.alias) if display is not None else None
             tg.create_task(
-                _monitor_rendition(session, master, rendition, client)
+                _monitor_rendition(session, master, rendition, client, status=status, display=display)
             )
 
 
@@ -61,6 +81,9 @@ async def _monitor_rendition(
     master: MasterPlaylist,
     rendition: object,
     client: object,
+    *,
+    status: RenditionStatus | None = None,
+    display: LiveDisplay | None = None,
 ) -> None:
     url = rendition.uri  # type: ignore[union-attr]
     if not url.startswith("http"):
@@ -79,8 +102,15 @@ async def _monitor_rendition(
     if isinstance(parsed, ParseError):
         return
 
+    new_findings: list = []
     async with session.lock:
-        session.add_findings(validate_media(parsed))
+        new_findings = validate_media(parsed)
+        session.add_findings(new_findings)
+
+    if status is not None:
+        status.update(sequence=getattr(parsed, "media_sequence", None), new_findings=len(new_findings))
+    if display is not None:
+        display.refresh()
 
     previous: MediaPlaylist = parsed
 
@@ -109,8 +139,16 @@ async def _monitor_rendition(
         if isinstance(parsed, ParseError):
             continue
 
+        new_findings = []
         async with session.lock:
-            session.add_findings(validate_media(parsed))
-            session.add_findings(check_continuity(previous, parsed))
+            media_findings = validate_media(parsed)
+            continuity_findings = check_continuity(previous, parsed)
+            new_findings = media_findings + continuity_findings
+            session.add_findings(new_findings)
+
+        if status is not None:
+            status.update(sequence=getattr(parsed, "media_sequence", None), new_findings=len(new_findings))
+        if display is not None:
+            display.refresh()
 
         previous = parsed

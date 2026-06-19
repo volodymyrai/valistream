@@ -5,9 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.live import Live
 from rich.table import Table
+
+from valistream.terminal.scanner import ScannerBar
 
 if TYPE_CHECKING:
     from valistream.parser.models import Rendition
@@ -41,10 +43,11 @@ class RenditionStatus:
 class LiveDisplay:
     """Live-updating status panel using rich.Live."""
 
-    def __init__(self, console: Console) -> None:
+    def __init__(self, console: Console, *, color: bool = True) -> None:
         self._console = console
         self._statuses: dict[str, RenditionStatus] = {}
         self._live: Live | None = None
+        self._scanner = ScannerBar(color=color)
 
     def add_rendition(self, rendition: Rendition) -> RenditionStatus:
         status = RenditionStatus(rendition.alias)
@@ -53,6 +56,9 @@ class LiveDisplay:
 
     def get_status(self, alias: str) -> RenditionStatus | None:
         return self._statuses.get(alias)
+
+    def _build_renderable(self) -> Group:
+        return Group(self._scanner.render(), self._build_table())
 
     def _build_table(self) -> Table:
         table = Table(title="Rendition Status", expand=True)
@@ -77,11 +83,12 @@ class LiveDisplay:
 
     def refresh(self) -> None:
         if self._live is not None:
-            self._live.update(self._build_table())
+            self._scanner.advance()
+            self._live.update(self._build_renderable())
 
     def start(self) -> None:
         self._live = Live(
-            self._build_table(),
+            self._build_renderable(),
             console=self._console,
             refresh_per_second=4,
         )
@@ -100,8 +107,8 @@ class LiveDisplay:
         self.stop()
 
 
-def create_live_display(console: Console | None = None) -> LiveDisplay:
+def create_live_display(console: Console | None = None, *, color: bool = True) -> LiveDisplay:
     """Create a LiveDisplay for monitoring status."""
     if console is None:
         console = Console()
-    return LiveDisplay(console)
+    return LiveDisplay(console, color=color)

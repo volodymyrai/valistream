@@ -16,13 +16,6 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
-### Standalone EXE (for Windows)
-
-Download `valistream-windows-x64.exe` from the [latest release](https://github.com/volodymyrai/valistream/releases/latest). No Python required.
-
-> **Note:** Windows SmartScreen may warn on first run since the EXE is not code-signed. Click "More info" then "Run anyway".
-
-
 
 ## Quick Start
 

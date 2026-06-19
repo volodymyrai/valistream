@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "valistream"
+version = "0.6.0"
+description = "HLS stream validator — validates and monitors HLS playlists against RFC 8216 and Apple HLS authoring rules"
+readme = "README_WINDOWS.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Valistream Contributors" }]
+keywords = ["hls", "m3u8", "streaming", "validation", "rfc8216"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "click>=8.1",
+    "aiohttp>=3.9",
+    "m3u8>=4.0",
+    "rich>=13.0",
+    "questionary>=2.0",
+    "colorama>=0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "aioresponses>=0.7",
+    "mypy>=1.8",
+    "ruff>=0.4",
+    "coverage>=7.0",
+]
+
+[project.scripts]
+valistream = "valistream.cli.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests that take a long time to run",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["valistream"]
+
+[tool.coverage.run]
+source = ["valistream"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90

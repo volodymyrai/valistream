@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+@testable import Valistream
 @testable import ValistreamCore
 
 /// Asserts FR-015, SC-005: `--verbose` adds ≥5 trace categories absent at normal;

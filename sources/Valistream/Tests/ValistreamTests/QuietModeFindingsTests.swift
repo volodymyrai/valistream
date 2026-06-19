@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+@testable import Valistream
 import ValistreamCore
 
 @Suite("Quiet mode findings")

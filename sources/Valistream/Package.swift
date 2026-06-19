@@ -21,8 +21,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/onmyway133/Promptberry.git", .upToNextMajor(from: "1.0.0")),
-        .package(url: "https://github.com/onevcat/Rainbow.git", .upToNextMajor(from: "4.0.0")),
-        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.0.0")),
+        .package(url: "https://github.com/onevcat/Rainbow.git", .upToNextMajor(from: "4.2.1")),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.8.2")),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

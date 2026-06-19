@@ -1,5 +1,5 @@
 {
-  "originHash" : "9b6cc79dedfe7e5f436fd4754582391302d09cafd74cba9cbb4bf6b317eab8ed",
+  "originHash" : "e90f81f821db17148c2a5b6d2b75e20565bb3d3dcc587f5465b1b542ef372ea4",
   "pins" : [
     {
       "identity" : "promptberry",
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-argument-parser",
       "state" : {
-        "revision" : "fd4c3b68a0c04c4c6cda27f0213c3703d50080e8",
-        "version" : "1.0.0"
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
       }
     }
   ],

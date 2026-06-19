@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+@testable import Valistream
 import ValistreamCore
 
 /// Cross-tier freeze guard (V3, FR-021, SC-011): verbose mode must produce IDENTICAL findings,

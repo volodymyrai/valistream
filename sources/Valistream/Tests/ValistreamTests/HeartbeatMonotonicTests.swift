@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+@testable import Valistream
 @testable import ValistreamCore
 
 /// Integration tests asserting that `sessionRefreshTotal` in `.activity` events is

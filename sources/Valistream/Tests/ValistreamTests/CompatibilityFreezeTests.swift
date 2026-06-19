@@ -9,6 +9,7 @@ import ValistreamCore
 
 import Foundation
 import Testing
+@testable import Valistream
 
 @Suite("Feature 004 compatibility freeze")
 struct CompatibilityFreezeTests {

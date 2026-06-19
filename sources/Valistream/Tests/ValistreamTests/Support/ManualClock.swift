@@ -53,10 +53,6 @@ final class ManualClock: Clock, @unchecked Sendable {
         var nextID = 0
     }
 
-    private final class IDBox: @unchecked Sendable {
-        var id = -1
-    }
-
 
 
     // MARK: - Lets & Vars
@@ -97,16 +93,17 @@ final class ManualClock: Clock, @unchecked Sendable {
 
     func sleep(until deadline: Instant, tolerance: Duration? = nil) async throws {
         try Task.checkCancellation()
-        let box = IDBox()
+        let id = lock.withLock { state -> Int in
+            let next = state.nextID
+            state.nextID += 1
+            return next
+        }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
                 let resumeImmediately = lock.withLock { state -> Bool in
                     if deadline <= state.now {
                         return true
                     }
-                    let id = state.nextID
-                    state.nextID += 1
-                    box.id = id
                     state.sleepers.append(Sleeper(id: id, deadline: deadline, continuation: continuation))
                     return false
                 }
@@ -116,7 +113,7 @@ final class ManualClock: Clock, @unchecked Sendable {
             }
         } onCancel: {
             let cancelled: CheckedContinuation<Void, any Error>? = lock.withLock { state in
-                guard let index = state.sleepers.firstIndex(where: { $0.id == box.id }) else {
+                guard let index = state.sleepers.firstIndex(where: { $0.id == id }) else {
                     return nil
                 }
                 return state.sleepers.remove(at: index).continuation

@@ -12,7 +12,7 @@ import Foundation
 /// Each call writes one complete JSON line and flushes to the file handle so every finding
 /// is durable even if the process is interrupted mid-session. Safe to call from a single
 /// serialised context (e.g. within a `ValidationSession` actor).
-public final class FindingsLog: @unchecked Sendable {
+public final class FindingsLog {
     // MARK: - Lets & Vars
 
     private let fileHandle: FileHandle

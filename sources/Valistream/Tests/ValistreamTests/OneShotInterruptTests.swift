@@ -137,11 +137,11 @@ actor FetchGate {
     }
 }
 
-final class GatedFetcher: StreamFetching, @unchecked Sendable {
+actor GatedFetcher: StreamFetching {
     private let inner: ScriptedStreamFetcher
     private let gateURL: URL
     private let gate: FetchGate
-    private let hasGated = OSAllocatedUnfairLock<Bool>(initialState: false)
+    private var hasGated = false
 
     init(inner: ScriptedStreamFetcher, gateURL: URL, gate: FetchGate) {
         self.inner = inner
@@ -150,7 +150,8 @@ final class GatedFetcher: StreamFetching, @unchecked Sendable {
     }
 
     func fetch(_ url: URL) async -> FetchResult {
-        if url == gateURL && hasGated.withLock({ v in defer { v = true }; return !v }) {
+        if url == gateURL, !hasGated {
+            hasGated = true
             await gate.block()
         }
         return await inner.fetch(url)

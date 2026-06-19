@@ -1,46 +1,12 @@
-# valistream (Windows)
+# valistream (Python)
 
 HLS stream validator — validates and monitors HLS playlists against RFC 8216 and Apple HLS authoring rules.
 
-Windows port of [valistream](https://github.com/volodymyrai/valistream) (originally macOS/Swift).
+Python port of [valistream](https://github.com/volodymyrai/valistream) (originally macOS/Swift).
 
 ## Installation
 
-### Standalone EXE (recommended)
-
-Download `valistream-windows-x64.exe` from the [latest release](https://github.com/volodymyrai/valistream/releases/latest). No Python required.
-
-```powershell
-# Download and verify checksum
-Invoke-WebRequest -Uri "https://github.com/volodymyrai/valistream/releases/latest/download/valistream-windows-x64.exe" -OutFile valistream.exe
-Invoke-WebRequest -Uri "https://github.com/volodymyrai/valistream/releases/latest/download/valistream-windows-x64.exe.sha256" -OutFile valistream.exe.sha256
-
-# Move to a directory in your PATH
-Move-Item valistream.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\"
-```
-
-> **Note:** Windows SmartScreen may warn on first run since the EXE is not code-signed. Click "More info" then "Run anyway".
-
-### Scoop
-
-```powershell
-scoop bucket add valistream https://github.com/volodymyrai/valistream
-scoop install valistream
-```
-
-### winget
-
-```powershell
-winget install volodymyrai.valistream
-```
-
-### pip (requires Python 3.11+)
-
-```powershell
-pip install valistream
-```
-
-### From source (development)
+### From source (recommended; compatible with all platforms)
 
 ```powershell
 git clone https://github.com/volodymyrai/valistream.git
@@ -49,6 +15,14 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[dev]"
 ```
+
+### Standalone EXE (for Windows)
+
+Download `valistream-windows-x64.exe` from the [latest release](https://github.com/volodymyrai/valistream/releases/latest). No Python required.
+
+> **Note:** Windows SmartScreen may warn on first run since the EXE is not code-signed. Click "More info" then "Run anyway".
+
+
 
 ## Quick Start
 

@@ -1,6 +1,6 @@
 # Agent guide
 
-Repo = Xcode workspace in ./Valistream. CLI tool. Swift 6, Strict Concurrency, Swift Testing
+Repo = Swift Package Manager (SPM) package in ./sources/Valistream/. CLI tool. Swift 6, Strict Concurrency, Swift Testing
 Targets: macOS14+
 
 
@@ -105,4 +105,4 @@ When promted "implement" → use "Sonnet max effort" or "GPT 5.5 high effort" su
 Pass XML handoff
 
 **When subagent has finished** → code-review/validate/simplify → send to re-work if needed
-Validate `Valistream` scheme build & `Valistream.xctestplan` tests pass
+Validate `Valistream-Package` scheme build & test

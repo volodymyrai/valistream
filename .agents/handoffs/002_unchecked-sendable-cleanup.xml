@@ -1,0 +1,155 @@
+<executor_handoff>
+  <system_instructions>
+    Execute one path only. Three independent edits — preserve existing behavior exactly.
+    Swift 6.3 strict concurrency. NEVER add `@unchecked Sendable` or `nonisolated(unsafe)`.
+    Out of scope — do NOT touch these 4 lock-backed sites (skill-sanctioned, leave verbatim):
+      MetricsCapturingDelegate, ManualClock (the outer class keeps its `@unchecked Sendable`),
+      OutputRecorder, ScriptedStreamFetcher.
+    Dependency: this handoff's TEST-target edits (IDBox, GatedFetcher) can only be build-validated
+    AFTER handoff 001 (the 17-error compile fix) lands. The FindingsLog edit is production and
+    validates independently. Recommend: apply after 001 is green.
+  </system_instructions>
+
+  <task_brief>
+    <objective>
+      Remove the 2 skill-unsanctioned `@unchecked Sendable` uses (FindingsLog, IDBox) and upgrade
+      the 1 sanctioned site where an actor is clearer (GatedFetcher). Net effect: 7 `@unchecked
+      Sendable` -> 4, all remaining ones genuine lock-backed/provably-safe.
+    </objective>
+
+    <why>
+      swift-concurrency-pro: `@unchecked Sendable` legitimate ONLY for provably-thread-safe
+      lock-backed types. FindingsLog has NO lock (the claim is false) yet is actor-confined so it
+      needs no Sendable at all. IDBox is a bare mutable box leaning on an external lock (smell).
+      GatedFetcher's lock is gratuitous now that `fetch` is async — an actor is clearer and drops
+      the cryptic `withLock { defer }` one-liner.
+    </why>
+
+    <repo_signals>
+      - FindingsLog (Sources/ValistreamCore/Archive/FindingsLog.swift): `public final class
+        FindingsLog: @unchecked Sendable`, holds `private let fileHandle: FileHandle`, `append()`
+        writes with no lock. Used ONLY as `private var findingsLog` on `ValidationSession` (a
+        `public actor`): constructed in `ValidationSession.run()` (~line 168), appended in the
+        finding-recording path (~line 397). Plus single-threaded `FindingsLogTests`. Never sent
+        across an isolation boundary.
+      - IDBox: `private final class IDBox: @unchecked Sendable { var id = -1 }` nested in
+        ManualClock (Tests/ValistreamTests/Support/ManualClock.swift). Used only inside
+        `ManualClock.sleep(until:tolerance:)` to carry a sleeper id from the continuation body into
+        the `onCancel` handler. Both accesses already happen under `ManualClock.lock`.
+      - GatedFetcher: `final class GatedFetcher: StreamFetching, @unchecked Sendable` in
+        Tests/ValistreamTests/OneShotInterruptTests.swift. `let inner/gateURL/gate` + one
+        lock-guarded `hasGated` Bool. `fetch(_:) async -> FetchResult` is the only API.
+    </repo_signals>
+
+    <scope>
+      Exactly 3 edits: FindingsLog, IDBox, GatedFetcher. Nothing else. The 4 KEEP sites stay
+      byte-for-byte. No production change beyond the FindingsLog declaration line.
+    </scope>
+
+    <implementation_path>
+      Edit 1 — FindingsLog: change
+        `public final class FindingsLog: @unchecked Sendable {`
+        to
+        `public final class FindingsLog {`
+        Nothing else. It is confined to the ValidationSession actor and needs no Sendable
+        conformance; dropping it introduces no diagnostic (a non-Sendable class stored in actor
+        state and never escaped is legal).
+
+      Edit 2 — IDBox: DELETE the nested `IDBox` class entirely. In `sleep(until:tolerance:)`,
+        allocate the id up front and capture it as an immutable `let`:
+
+          func sleep(until deadline: Instant, tolerance: Duration? = nil) async throws {
+              try Task.checkCancellation()
+              let id = lock.withLock { state -> Int in
+                  let next = state.nextID
+                  state.nextID += 1
+                  return next
+              }
+              try await withTaskCancellationHandler {
+                  try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+                      let resumeImmediately = lock.withLock { state -> Bool in
+                          if deadline <= state.now { return true }
+                          state.sleepers.append(Sleeper(id: id, deadline: deadline, continuation: continuation))
+                          return false
+                      }
+                      if resumeImmediately { continuation.resume() }
+                  }
+              } onCancel: {
+                  let cancelled: CheckedContinuation<Void, any Error>? = lock.withLock { state in
+                      guard let index = state.sleepers.firstIndex(where: { $0.id == id }) else { return nil }
+                      return state.sleepers.remove(at: index).continuation
+                  }
+                  cancelled?.resume(throwing: CancellationError())
+              }
+          }
+
+        (`id` is now a Sendable `let Int` captured by both closures — no shared mutable box.)
+
+      Edit 3 — GatedFetcher: convert class -> actor; drop the lock.
+
+          actor GatedFetcher: StreamFetching {
+              private let inner: ScriptedStreamFetcher
+              private let gateURL: URL
+              private let gate: FetchGate
+              private var hasGated = false
+
+              init(inner: ScriptedStreamFetcher, gateURL: URL, gate: FetchGate) {
+                  self.inner = inner
+                  self.gateURL = gateURL
+                  self.gate = gate
+              }
+
+              func fetch(_ url: URL) async -> FetchResult {
+                  if url == gateURL, !hasGated {
+                      hasGated = true
+                      await gate.block()
+                  }
+                  return await inner.fetch(url)
+              }
+          }
+    </implementation_path>
+
+    <code_level_guidance>
+      - FindingsLog: only references are ValidationSession (actor `private var`) + single-threaded
+        tests; nothing sends it. Dropping Sendable is safe and produces no new error.
+      - IDBox elimination: id is now allocated even on the immediate-resume path (harmless nextID
+        bump). The deadline is still re-checked under the second lock acquisition. onCancel finds
+        nothing when the sleeper was never appended -> no-op. Behavior is identical to the box version.
+      - GatedFetcher reentrancy: `hasGated = true` is set BEFORE the `await gate.block()` suspension,
+        with no await between the `!hasGated` read and the write -> the gate still fires exactly once
+        even under concurrent gateURL fetches. `fetch` was already async, so NO call site changes.
+        It remains Sendable (actor) -> still satisfies `StreamFetching: Sendable`.
+      - Forbidden: editing the 4 KEEP sites; ManualClock's OUTER `@unchecked Sendable` stays (only
+        the nested IDBox is removed); any new `@unchecked`/`nonisolated(unsafe)`.
+    </code_level_guidance>
+
+    <entry_points>
+      Sources/ValistreamCore/Archive/FindingsLog.swift        (Edit 1)
+      Tests/ValistreamTests/Support/ManualClock.swift          (Edit 2 — delete IDBox, edit sleep)
+      Tests/ValistreamTests/OneShotInterruptTests.swift        (Edit 3)
+    </entry_points>
+
+    <search_fallback>
+      grep -rn "@unchecked Sendable" sources/Valistream --include=*.swift
+      After this handoff it must return EXACTLY 4 lines: MetricsCapturingDelegate, ManualClock,
+      OutputRecorder, ScriptedStreamFetcher. `IDBox` type must be gone.
+    </search_fallback>
+
+    <acceptance_criteria>
+      - `grep -rn "@unchecked Sendable"` over the package = exactly 4 (the KEEP set). No `IDBox` type.
+      - No new `@unchecked Sendable` / `nonisolated(unsafe)`.
+      - Production builds clean. After 001: test target builds; tests pass with unchanged behavior
+        — esp. OneShotInterruptTests (one-shot interrupt still gates exactly once), FindingsLogTests,
+        and ManualClock-driven cadence suites (sleep/cancel still deterministic).
+    </acceptance_criteria>
+
+    <validation>
+      Prod (independent):  swift build --package-path sources/Valistream 2>&1 | xcsift -f toon
+      Test (needs 001):    swift build --build-tests --package-path sources/Valistream 2>&1 | xcsift -f toon
+                           swift test --package-path sources/Valistream 2>&1 | xcsift -f toon
+      Then `Valistream-Package` scheme build + test green.
+      Targeted: run OneShotInterruptTests + FindingsLogTests + the ManualClock cancellation paths;
+      confirm no behavioral drift from the box removal or the actor conversion.
+    </validation>
+  </task_brief>
+</executor_handoff>

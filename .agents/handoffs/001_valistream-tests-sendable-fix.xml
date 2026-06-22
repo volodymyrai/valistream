@@ -1,0 +1,143 @@
+<executor_handoff>
+  <system_instructions>
+    Execute one path only. Preserve existing test patterns and assertions.
+    Follow scope exactly — do NOT widen.
+    Swift 6.3 strict concurrency. NEVER add `@unchecked Sendable` to fix a diagnostic.
+    Do NOT touch: FindingsLog, IDBox, or the 5 existing lock-backed `@unchecked Sendable`
+    sites (MetricsCapturingDelegate, ManualClock, OutputRecorder, ScriptedStreamFetcher,
+    GatedFetcher) — all out of scope.
+    Changes confined to test target `ValistreamTests`. No production (`ValistreamCore`) edits.
+  </system_instructions>
+
+  <task_brief>
+    <objective>
+      Make `ValistreamTests` target compile under Swift 6.3 strict concurrency.
+      17 errors, all `#SendingClosureRisksDataRace` / `#SendingRisksDataRace`.
+      Two moves: (A) `LiveSessionHarness` class -> actor; (B) restructure 8 event-collector
+      closures to return their array instead of mutating a captured `var`.
+    </objective>
+
+    <why>
+      Pure-SPM + Swift 6 strict-concurrency migration broke ValistreamTests. Root cause:
+      non-Sendable `LiveSessionHarness` captured into `Task`/`addTask` sending closures, plus
+      collectors mutating test-local `var`s across a task boundary. Skill-aligned fix: actor over
+      `@unchecked`, structured return-value over shared-mutable capture. (`@unchecked` is NOT the
+      cause — zero errors come from those sites.)
+    </why>
+
+    <repo_signals>
+      - `LiveSessionHarness` (Tests/ValistreamTests/Support/LiveSessionHarness.swift): `final class`,
+        owns `var runTask` (the only mutable state -> reason it's non-Sendable). Members:
+        `let clock = ManualClock()`, `let fetcher: ScriptedStreamFetcher`, `let session: ValidationSession`,
+        `private let epoch`. Methods: start/waitForSleepers/step/advance/abortAndFinish/finish.
+      - `ValidationSession` = `public actor` (Sendable). `session.events` / `session.timestampedEvents`
+        = nonisolated Sendable `AsyncStream`s (already accessed sync in tests).
+      - `ManualClock`, `ScriptedStreamFetcher`, `OutputRecorder` already Sendable (lock-backed
+        `@unchecked` + `OSAllocatedUnfairLock`) — sync-accessible, leave as-is.
+      - Existing test idiom: build harness, stub/timeline fetcher, `harness.start()`, drive via
+        `harness.step(...)`, collect events from the session streams, `harness.abortAndFinish()`, assert.
+    </repo_signals>
+
+    <scope>
+      ONLY the 17 listed diagnostics in `ValistreamTests`. Two buckets:
+
+      Bucket 1 — fixed by `class -> actor` alone (9 sites; add `await` to start()):
+        LiveSessionHarness.swift:65   (start()'s own `Task { await session.run() }` captures self)
+        HeartbeatMonotonicTests.swift:41, :87   (driver `addTask { await harness.step... }`)
+        RosterAndZeroURLTests.swift:95          (driver `addTask { await harness.waitForSleepers... }`)
+        VerboseDistinctnessTests.swift:94, :127 (driver `addTask { await harness.step... }`)
+        LiveMonitoringTests.swift:75, :109      (`Task { ...timestampedEvents; return events }`)
+        LiveFaultScenarioTests.swift:35         (`Task { ...timestampedEvents; return events }`)
+
+      Bucket 2 — collector mutates a captured `var` -> return-value restructure (8 sites):
+        HeartbeatMonotonicTests.swift:34 (`totals`), :80 (`lastTotal`)
+        RosterAndZeroURLTests.swift:90 (`collectedEvents`)
+        VerboseDistinctnessTests.swift:89 (`events`), :122 (`events`)
+        VerbosityEquivalenceTests.swift:53 (`machineEvents`), :62 (`renderer` var; `.render` mutates)
+        OutputLocationStartupTests.swift:60 (`events`) — NOTE: no harness here; builds
+          `ValidationSession` directly. Actor change irrelevant; only the return-value fix applies.
+
+      Out of scope: FindingsLog, IDBox, the 5 lock-backed `@unchecked` sites, any ValistreamCore edit.
+    </scope>
+
+    <implementation_path>
+      Step 1 — `LiveSessionHarness`: change `final class` to `actor`. Body unchanged EXCEPT
+        `start()` -> `func start() { runTask = Task { [session] in await session.run() } }`
+        (explicit `[session]` capture avoids retaining the harness in the task).
+        clock/fetcher/session are immutable Sendable `let`s = nonisolated -> stay sync-accessible
+        from tests; `runTask` becomes actor-isolated (fine). init unchanged.
+
+      Step 2 — Add `await` before every `harness.start()` (all callers are already `async`).
+
+      Step 3 — For each Bucket-2 site, convert the collector that mutates an outer `var` into a
+        child task that RETURNS its accumulation; read it after the drive completes:
+
+          let collector = Task { [harness] in
+              var acc: [SessionEvent] = []
+              for await e in harness.session.events { acc.append(e) }   // or .timestampedEvents
+              return acc
+          }
+          // ...existing drive (now on the current task)...
+          await harness.abortAndFinish()
+          let events = await collector.value
+
+        Where the site used `withDiscardingTaskGroup { addTask(collector) + addTask(driver) }`,
+        drop the group: keep the collector as the `Task` above, run the driver inline on the
+        current task, then `await collector.value`. Preserve original collector-vs-start ordering.
+
+        Special cases:
+        - VerbosityEquivalenceTests:62 — move `var renderer = makeRenderer(recorder:...)` INSIDE the
+          render task (capture `recorder`, the Sendable `OutputRecorder`); results read from
+          `recorder` afterward. The `machineTask` (:53) uses the standard return-value pattern.
+        - OutputLocationStartupTests:60 — no harness. `session` (actor) + `eventsStream` local are
+          Sendable; only convert the collecting `Task` to return its `[SessionEvent]`.
+    </implementation_path>
+
+    <code_level_guidance>
+      - Sendability facts to rely on: ValidationSession = actor (Sendable); events/timestampedEvents =
+        nonisolated Sendable AsyncStream; ManualClock/ScriptedStreamFetcher/OutputRecorder = Sendable.
+      - The ONLY new `await` introduced is on `start()`. fetcher.stub/timeline, session.* (already
+        awaited), step/advance/waitForSleepers/abortAndFinish are unaffected.
+      - Sequencing: the collector loop exits only when the stream finishes, which happens after
+        `abortAndFinish()`. So `await collector.value` MUST come after `abortAndFinish()` or it
+        deadlocks against `.timeLimit`.
+      - Behavioral parity: restructured collectors must gather the IDENTICAL event set as before
+        (same stream, same filter). Assertions must not change.
+      - Forbidden: any new `@unchecked Sendable`; any `nonisolated(unsafe)`; touching out-of-scope types.
+    </code_level_guidance>
+
+    <entry_points>
+      Tests/ValistreamTests/Support/LiveSessionHarness.swift   (Step 1)
+      Tests/ValistreamTests/HeartbeatMonotonicTests.swift
+      Tests/ValistreamTests/RosterAndZeroURLTests.swift
+      Tests/ValistreamTests/VerboseDistinctnessTests.swift
+      Tests/ValistreamTests/VerbosityEquivalenceTests.swift
+      Tests/ValistreamTests/LiveMonitoringTests.swift
+      Tests/ValistreamTests/LiveFaultScenarioTests.swift
+      Tests/ValistreamTests/OutputLocationStartupTests.swift
+    </entry_points>
+
+    <search_fallback>
+      If line numbers drifted: grep within `sources/Valistream/Tests/ValistreamTests` for
+      `withDiscardingTaskGroup`, `group.addTask`, `harness.start()`, `LiveSessionHarness`, and
+      `var events` / `var totals` / `var machineEvents`. Re-run the build (see validation) to get
+      the authoritative current diagnostic line set.
+    </search_fallback>
+
+    <acceptance_criteria>
+      - `swift build --build-tests --package-path sources/Valistream` -> 0 errors (was 17).
+      - All 17 listed diagnostics gone; no new warnings/errors introduced.
+      - No new `@unchecked Sendable` / `nonisolated(unsafe)`. FindingsLog, IDBox, and the 5
+        lock-backed sites are byte-for-byte untouched.
+      - Test assertions/semantics unchanged; touched suites still pass.
+    </acceptance_criteria>
+
+    <validation>
+      Build:  swift build --build-tests --package-path sources/Valistream 2>&1 | xcsift -f toon   (status: success)
+      Test:   swift test --package-path sources/Valistream 2>&1 | xcsift -f toon                   (all pass)
+      Then validate the `Valistream-Package` scheme build + test green (project gate).
+      Spot-check the 7 touched suites — esp. Heartbeat (monotonic totals), VerbosityEquivalence
+      (machine vs human parity), LiveMonitoring (hold/staleness) — for behavioral parity.
+    </validation>
+  </task_brief>
+</executor_handoff>
